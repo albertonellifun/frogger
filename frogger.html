@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Frogger Infinite Bidirezionale</title>
+  <style>
+    body {
+      background: #111;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    canvas {
+      border: 3px solid #fff;
+      background: #2e7d32;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" width="400" height="400"></canvas>
+  <audio id="cracraSound" preload="auto">
+	<source src="./cracra.mp3" type="audio/mpeg">
+  </audio>
+  <script>
+  (() => {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const tile = 40;
+    const cols = 10;
+    const visibleRows = 10;//Math.ceil(canvas.height / tile) + 2;
+    const extraRows = 2;
+    
+    const frog = { x: 5, y: 0 }; // rana sempre centrata a y=0
+    const segments = new Map(); // mappa: y → riga
+    
+	let offset = 0;         // posizione attuale della camera
+	let targetOffset = 0;   // offset desiderato verso cui ci muoviamo
+	let level = 0;
+
+    // Utilità
+    const randomInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+    const carColors = [
+      // colori base originali
+      '#e74c3c', '#3498db', '#f1c40f', '#9b59b6', '#1abc9c', '#e67e22',
+      
+      // nuove tinte vivaci
+      '#ff6b6b', '#4ecdc4', '#ffe66d', '#ff9f43', '#5f27cd', '#10ac84',
+      
+      // colori pastello
+      '#a29bfe', '#fd79a8', '#81ecec', '#fab1a0', '#74b9ff',
+      
+      // colori realistici per auto
+      '#c0c0c0', // argento
+      '#2c3e50', // blu notte
+      '#1e272e', // antracite
+      '#f5f6fa', // bianco
+      '#d63031', // rosso vivo
+      '#ffb142', // giallo caldo
+      '#16a085', // verde scuro
+      '#3867d6', // blu elettrico
+      '#b71540', // bordeaux
+      '#8e44ad', // viola scuro
+    ];
+
+    const randomCarColor = () => carColors[randomInt(0, carColors.length-1)];
+
+    // --- Generazione righe ---
+    function generateRow(y) {
+      if (segments.has(y)) return; // già esistente
+   
+      let countGrass = 0;
+	  let countRoad = 0;
+	  let countDouble = 0;
+	  let countTot = 0;
+	  for (const [y, row] of segments) {
+	    countGrass = countGrass + (row.type == "grass" ? 1 : 0);
+		countRoad = countRoad + (row.type == "road" && !row.lane ? 1 : 0);
+		countDouble = countDouble + (row.type == "road" && row.lane ? 1 : 0);
+		countTot++;
+      }
+	  console.log('grass='+countGrass+' road='+countRoad+' double='+countDouble);
+	  
+      // Probabilità di generare strada doppia
+      const makeDoubleRoad = y !== 0 && (countDouble<3 || countGrass>countTot/2);//Math.random() < 0.25 && (countGrass - countRoad) > 1;
+
+      if (makeDoubleRoad) {
+        // Evita di creare doppia se la successiva esiste già
+        if (!segments.has(y + 1)) {
+		
+          let workInProgress = Math.random() < 0.3;
+		  let cart = 0;
+		  let cartType = 0;
+		  if (Math.random() < 0.5) {
+		    cart = 1 + ((Math.random() * 10) | 0 ) * tile;//posizione
+		    cartType = 1 + ((Math.random() * 7) | 0);
+		  }
+          var rowA = { y: y, type: "road", lane: 1, cars: [], zebra: 0, workInProgress: workInProgress, cart: cart, cartType: cartType };
+          var speedA = 1 + Math.random() * 1.5;
+          for (var j = 0; j < 2; j++) {
+            var c = {
+              x: (j * 5 + randomInt(0, 2)) * tile,
+              y: y * tile,
+              speed: speedA,
+              color: randomCarColor()
+            };
+            rowA.cars.push(c);
+          }
+          segments.set(y, rowA);
+        
+          var rowB = { y: y + 1, type: "road", lane: 2, cars: [], zebra: 0, workInProgress: workInProgress, cart: cart, cartType: cartType };
+          var speedB = -(1 + Math.random() * 1.5);
+          for (var j = 0; j < 2; j++) {
+            var c2 = {
+              x: (j * 5 + randomInt(0, 2)) * tile,
+              y: (y+1) * tile,
+              speed: speedB,
+              color: randomCarColor()
+            };
+            rowB.cars.push(c2);
+          }
+          segments.set(y+1, rowB);
+          
+          console.log('generate '+y+' frog y'+frog.y+ ' ->> double', rowA, rowB);
+          return;
+        }
+        else console.log('collisione');
+	  }   
+      
+      const makeRoad = y !== 0 && countGrass>countTot/2;//Math.random() < 0.7 && (countGrass - countRoad) > 0;
+      if (makeRoad) {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        const speed = dir * (1 + Math.random() * 1.2);
+		
+		//zebrone
+		let zebra = 0;
+        let zebraType = 0;
+        if (Math.random() < 0.5) {
+          zebra = 1 + ((Math.random() * 10) | 0 ) * tile;//posizione
+          zebraType = (Math.random() * 4) | 0;//tipo strisce
+        }
+		
+		//giallo
+		let workInProgress = Math.random() < 0.3;
+		
+		//cartelli
+		let cart = 0;
+		let cartType = 0;
+		if (Math.random() < 0.5) {
+		  cart = zebra ? zebra - dir : 1 + ((Math.random() * 9) | 0 ) * tile - dir;//posizione
+		  cartType = 1 + ((Math.random() * 7) | 0);
+		}
+		
+        const row = { type: 'road', lane: 0, cars: [], zebra: zebra, zebraType: zebraType, workInProgress: workInProgress, cart: cart, cartType: cartType };
+		
+        for (let j=0;j<2;j++){
+          row.cars.push({
+            x: (j * 5 + randomInt(0,2)) * tile,
+            y: y*tile,
+            speed: speed, 
+            color: randomCarColor()
+          });
+        }
+        segments.set(y,row);
+        console.log('generate '+y+' frog y'+frog.y+ ' ->> road', row);
+        return;
+      }
+      
+      //erba
+	  let hasLake = false;
+      let lake = 0;
+      if (Math.random() < 0.1) {
+          lake = 1 + ((Math.random() * 10) | 0 ) * tile;//posizione
+          hasLake = true;//tipo strisce
+        }
+	  const row = { type:'grass', cars:[], hasLake: hasLake, lake: lake };
+      segments.set(y,row);
+      console.log('generate '+y+' frog y'+frog.y+ ' ->> grass', row);
+    }
+
+    // Inizializza righe visibili
+    for (let i=visibleRows/2; i>-visibleRows/2; i--){
+      generateRow(i);
+    }
+
+    
+	//controlli tastiera
+    window.addEventListener('keydown', e=>{
+      if (e.keyCode===37 && frog.x>0) { frog.x--; playSound('cracraSound'); }
+      if (e.keyCode===39 && frog.x<cols-1) { frog.x++; playSound('cracraSound'); }
+	  if (e.keyCode===38) { // su
+        targetOffset++;
+		generateRow(Math.floor(targetOffset + visibleRows/2));
+		//offset++;
+        //generateRow(offset + visibleRows/2);
+        pruneRows();
+		playSound('cracraSound');
+      }
+      if (e.keyCode===40) { // giù
+        targetOffset--;
+		generateRow(Math.floor(targetOffset - visibleRows/2));
+		//offset--;
+        //generateRow(offset - visibleRows/2);
+        pruneRows();
+		playSound('cracraSound');
+      }
+    });
+
+    // --- Rimuove righe vecchie per non accumulare ---
+    function pruneRows() {
+      /*for (let y of segments.keys()) {
+        if (y < offset - (visibleRows/2 + extraRows) || y > offset + (visibleRows/2 + extraRows)) {
+          segments.delete(y);
+        }
+      }*/
+	  const camera = Math.round(targetOffset); // valuta rispetto a dove stiamo andando
+      const minY = camera - (visibleRows/2 + extraRows);
+      const maxY = camera + (visibleRows/2 + extraRows);
+      for (let y of Array.from(segments.keys())) {
+        if (y < minY || y > maxY) {
+          segments.delete(y);
+        }
+      }
+    }
+
+
+  
+  //erbetta
+  function drawGrass(y, row) {
+      var screenY = canvas.height/2 - (y - offset) * tile;
+
+      // Sfondo sfumato
+      var grad = ctx.createLinearGradient(0, screenY, 500, screenY + tile);
+      grad.addColorStop(0, '#2e7d32'); // verde chiaro in alto
+      grad.addColorStop(1, '#1b5e20'); // verde scuro in basso
+      ctx.fillStyle = grad;
+	  ctx.fillRect(0, screenY, canvas.width, tile);
+	  
+	  // ---- Laghetto
+	  if (row.hasLake) {
+		const lakeX = row.lake;
+		const lakeY = screenY + tile * 0.10;
+
+		const rx = tile * 1.0;
+		const ry = tile * 0.32;
+
+		const cx = lakeX + rx;
+		const cy = lakeY + ry;
+
+		// Bordo irregolare (più vivo)
+		ctx.beginPath();
+		ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+		ctx.fillStyle = '#26c';
+		ctx.fill();
+
+		// Acqua con gradiente più ricco
+		const waterGrad = ctx.createRadialGradient(
+		  cx, cy, rx * 0.2,
+		  cx, cy, rx
+		);
+		waterGrad.addColorStop(0, '#adf');  // riflesso chiarissimo
+		waterGrad.addColorStop(0.5, '#5bf'); // azzurro brillante
+		waterGrad.addColorStop(1, '#27d');   // blu profondo
+
+		ctx.beginPath();
+		ctx.ellipse(cx, cy, rx * 0.9, ry * 0.9, 0, 0, Math.PI * 2);
+		ctx.fillStyle = waterGrad;
+		ctx.fill();
+
+		// ---- Riflesso diagonale (tipo highlight) ----
+		ctx.save();
+		ctx.beginPath();
+		ctx.ellipse(cx, cy, rx * 0.9, ry * 0.9, 0, 0, Math.PI * 2);
+		ctx.clip();
+
+		const reflGrad = ctx.createLinearGradient(cx - rx, cy - ry, cx + rx, cy + ry);
+		reflGrad.addColorStop(0, 'rgba(255,255,255,0.25)');
+		reflGrad.addColorStop(0.4, 'rgba(255,255,255,0.05)');
+		reflGrad.addColorStop(1, 'rgba(255,255,255,0)');
+		ctx.fillStyle = reflGrad;
+		ctx.fillRect(cx - rx, cy - ry, rx * 2, ry * 2);
+		ctx.restore();
+
+		// ---- Onde leggere ----
+		ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.ellipse(cx, cy, rx * 0.7, ry * 0.7, 0, 0, Math.PI * 2);
+		ctx.stroke();
+
+		ctx.beginPath();
+		ctx.ellipse(cx, cy, rx * 0.45, ry * 0.45, 0, 0, Math.PI * 2);
+		ctx.stroke();
+	  }
+  }
+
+    
+  //strada
+function drawSingleRoad(y, row) {
+  const screenY = canvas.height/2 - (y - offset)*tile;
+
+  // Asfalto
+  ctx.fillStyle = '#666';
+  ctx.fillRect(0, screenY, canvas.width, tile);
+
+  // linee continue giallo ogni 3 righe, altrimenti bianco
+  ctx.strokeStyle = row.workInProgress ? '#fe4' : '#fff';
+  ctx.fillStyle = row.workInProgress ? '#fe4' : '#fff';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);//y % 4 === 0 ? [12, 8] : []);
+  ctx.beginPath();
+  ctx.moveTo(0, screenY + 2);
+  ctx.lineTo(canvas.width, screenY + 2);
+  ctx.moveTo(0, screenY + tile - 2);
+  ctx.lineTo(canvas.width, screenY + tile - 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  
+  //zebrone!
+  if (row.zebra !== 0) {
+    const crosswalkX = row.zebra;
+    const crosswalkWidth = tile * 1; // larghezza delle strisce
+    const stripeHeight = 4;            // altezza di ogni striscia
+
+    for (let i = 0; i < tile / (2 * stripeHeight) ; i++) {
+      const sy = screenY + 2 + (i * 2 * stripeHeight);
+      
+      if(row.zebraType === 0 || row.zebraType === 2) {
+        ctx.fillRect(crosswalkX, sy, crosswalkWidth, stripeHeight);
+      } else if (row.zebraType === 1 || row.zebraType === 3) {
+        ctx.fillRect(crosswalkX, sy, 4, stripeHeight);
+        ctx.fillRect(crosswalkX + crosswalkWidth - 4, sy, 4, stripeHeight);
+      } 
+    }
+  }
+  //i cartelli vanno disegnati DOPO
+  if (row.cartType === 1) {
+    signsToDraw.push({ type: "speed", x: row.cart - 25, y: screenY + 2 });
+  } else if (row.cartType === 2) {
+    signsToDraw.push({ type: "cross", x: row.cart - 25, y: screenY + 2 });
+  } else if (row.cartType === 3) {
+    signsToDraw.push({ type: "slow", x: row.cart - 25, y: screenY + 2 });
+  } else if (row.cartType === 4) {
+    signsToDraw.push({ type: "noovertake", x: row.cart - 25, y: screenY + 2 });
+  } else if (row.cartType === 5) {
+    signsToDraw.push({ type: "arrow", x: row.cart - 25, y: screenY + 2 });
+  } else if (row.cartType === 6) {
+    signsToDraw.push({ type: "nostop", x: row.cart - 25, y: screenY + 2 });
+  } else if (row.cartType === 7) {
+    signsToDraw.push({ type: "autovelox", x: row.cart - 25, y: screenY + 2 });
+  }
+}
+
+
+function drawCrosswalkSign(x, y) {
+  const signWidth = 20;
+  const signHeight = 20;
+  const poleHeight = 20;
+
+  // --- Palo ---
+  ctx.fillStyle = '#777';
+  ctx.fillRect(x + signWidth / 2 - 1, y + signHeight, 2, poleHeight);
+
+  // --- Fondo blu del cartello ---
+  ctx.fillStyle = '#1565c0';
+  ctx.fillRect(x, y, signWidth, signHeight);
+
+  // --- Triangolo bianco ---
+  ctx.beginPath();
+  ctx.moveTo(x + signWidth / 2, y + 3);
+  ctx.lineTo(x + 3, y + signHeight - 3);
+  ctx.lineTo(x + signWidth - 3, y + signHeight - 3);
+  ctx.closePath();
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+
+  // --- Omino stilizzato (bianco su blu scuro interno) ---
+  const cx = x + signWidth / 2;
+  const cy = y + signHeight / 2 + 1;
+
+  // Testa
+  ctx.beginPath();
+  ctx.arc(cx, cy - 4, 1.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#000';
+  ctx.fill();
+
+  // Corpo (linea diagonale)
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 2);
+  ctx.lineTo(cx - 3, cy + 3);
+  ctx.lineTo(cx + 3, cy + 3);
+  ctx.stroke();
+
+  // Braccia e gambe più visibili
+  ctx.beginPath();
+  ctx.moveTo(cx - 2, cy - 1);
+  ctx.lineTo(cx + 2, cy + 1);
+  ctx.moveTo(cx, cy + 3);
+  ctx.lineTo(cx, cy + 6);
+  ctx.stroke();
+}
+
+function drawDirectionSign(x, y) {
+  const radius = 10;          // Raggio del cartello
+  const poleHeight = 22;      // Altezza del palo
+  const cx = x + radius;
+  const cy = y + radius;
+
+  // --- Palo ---
+  ctx.fillStyle = '#777';
+  ctx.fillRect(cx - 2, cy + radius, 4, poleHeight);
+
+  // --- Cerchio blu ---
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fillStyle = '#24a';   // blu stile cartello europeo
+  ctx.fill();
+  ctx.closePath();
+
+  // --- Bordo bianco ---
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius - 1.5, 0, Math.PI * 2);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#fff';
+  ctx.stroke();
+  ctx.closePath();
+
+  // --- Freccia bianca verso l'alto ---
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+
+  // punta della freccia
+  ctx.moveTo(cx, cy - radius + 3);
+
+  // lati obliqui
+  ctx.lineTo(cx - 5, cy + 2);
+  ctx.lineTo(cx - 2, cy + 2);
+
+  // gambo
+  ctx.lineTo(cx - 2, cy + 6);
+  ctx.lineTo(cx + 2, cy + 6);
+
+  // lato destro
+  ctx.lineTo(cx + 2, cy + 2);
+  ctx.lineTo(cx + 5, cy + 2);
+
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawNoOvertakingSign(x, y) {
+  const radius = 10;
+  const poleHeight = 22;
+  const cx = x + radius;
+  const cy = y + radius;
+
+  // --- Palo ---
+  ctx.fillStyle = '#777';
+  ctx.fillRect(cx - 1, cy + radius, 2, poleHeight);
+
+  // --- Cerchio bianco con bordo rosso ---
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#d22";
+  ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // ---------------------------------------------------------------------
+  //                 AUTO SAGOMATE – STILE CARTELLO REALE
+  // ---------------------------------------------------------------------
+
+  // --- Auto rossa (sinistra) ---
+  ctx.fillStyle = "#d22";
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, cy + 3);   // parafango posteriore
+  ctx.lineTo(cx - 8, cy - 1);
+  ctx.lineTo(cx - 7, cy - 4);   // tetto inclinato
+  ctx.lineTo(cx - 2, cy - 4);
+  ctx.lineTo(cx - 1, cy - 1);   // cofano
+  ctx.lineTo(cx - 1, cy + 3);
+  ctx.closePath();
+  ctx.fill();
+
+  // Ruote
+  ctx.fillStyle = "#d22";
+  ctx.beginPath();
+  ctx.arc(cx - 7, cy + 3, 1.2, 0, Math.PI * 2);
+  ctx.arc(cx - 3, cy + 3, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+
+
+  // --- Auto nera (destra) ---
+  ctx.fillStyle = "#000";
+  ctx.beginPath();
+  ctx.moveTo(cx + 1, cy + 3);  // parafango posteriore
+  ctx.lineTo(cx + 1, cy - 1);
+  ctx.lineTo(cx + 3, cy - 4);  // tetto inclinato
+  ctx.lineTo(cx + 8, cy - 4);
+  ctx.lineTo(cx + 8, cy - 1);  // cofano
+  ctx.lineTo(cx + 8, cy + 3);
+  ctx.closePath();
+  ctx.fill();
+
+  // Ruote
+  ctx.beginPath();
+  ctx.arc(cx + 3, cy + 3, 1.2, 0, Math.PI * 2);
+  ctx.arc(cx + 7, cy + 3, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawNoStoppingSign(x, y) {
+  const radius = 10;
+  const cx = x + radius;
+  const cy = y + radius;
+  const poleHeight = 22;      // Altezza del palo
+
+  // --- Palo ---
+  ctx.fillStyle = '#777';
+  ctx.fillRect(cx - 2, cy + radius, 4, poleHeight);
+
+  // Cerchio blu
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fillStyle = "#25a";
+  ctx.fill();
+
+  // Bordo rosso
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#d22";
+  ctx.stroke();
+
+  // Barra diagonale 1
+  ctx.strokeStyle = "#d22";
+  ctx.beginPath();
+  ctx.moveTo(cx - radius + 4, cy - radius + 4);
+  ctx.lineTo(cx + radius - 4, cy + radius - 4);
+  ctx.stroke();
+
+  // Barra diagonale 2
+  ctx.beginPath();
+  ctx.moveTo(cx - radius + 4, cy + radius - 4);
+  ctx.lineTo(cx + radius - 4, cy - radius + 4);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+
+function drawSpeedLimitSign(x, y, limit) {
+  const radius = 10;       // Raggio del cartello (diametro 20)
+  const poleHeight = 20;   // Altezza del palo
+
+  // --- Palo ---
+  ctx.fillStyle = '#777';
+  ctx.fillRect(x + radius - 1, y + radius * 2, 2, poleHeight);
+  
+  // --- Cerchio bianco (sfondo del cartello) ---
+  ctx.beginPath();
+  ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+  ctx.closePath();
+
+  // --- Bordo rosso ---
+  ctx.beginPath();
+  ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#d22';
+  ctx.stroke();
+  ctx.closePath();
+
+  // --- Testo "50" ---
+  ctx.fillStyle = '#000';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(limit, x + radius, y+radius);
+}
+
+
+function drawSlowSign(x, y) {
+  const signWidth = 20;
+  const signHeight = 20;
+  const poleHeight = 20;
+
+  // --- Palo ---
+  ctx.fillStyle = '#777';
+  ctx.fillRect(x + signWidth / 2 - 1, y + signHeight, 2, poleHeight);
+
+  // --- Triangolo giallo ---
+  ctx.beginPath();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#d22';
+  ctx.moveTo(x + signWidth / 2, y + 3);
+  ctx.lineTo(x + 3, y + signHeight - 3);
+  ctx.lineTo(x + signWidth - 3, y + signHeight - 3);
+  ctx.closePath();
+  ctx.fillStyle = '#fe4';
+  ctx.fill();
+  ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // --- Testo "!" ---
+  ctx.fillStyle = '#000';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText("!", x + signWidth/2, y+signHeight/2 + 2);
+}
+
+function drawAutoveloxColumn(x, y) {
+  //cartello
+  drawSpeedLimitSign(x + tile, y , 30);
+  // Dimensioni base (scalabili)
+  const w = 14;     // larghezza colonnina
+  const h = 30;     // altezza colonnina
+  const panelH = 20; // altezza pannello bianco/nero
+  x+=w;
+  y+=10;
+  // -------- Colonnina arancione --------
+  ctx.fillStyle = "#f80"; // arancione autovelox
+  ctx.fillRect(x, y, w, h);
+  
+  ctx.fillStyle = '#000';
+  ctx.fillRect(x + 2, y + 2, 10, 5);
+
+  // -------- Strisce nere diagonali --------
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 3;
+
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 16);
+  ctx.lineTo(x + w - 2, y + 12);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 22);
+  ctx.lineTo(x + w - 2, y + 18);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x + 2, y + 28);
+  ctx.lineTo(x + w - 2, y + 24);
+  ctx.stroke();
+}
+
+
+//autostrada
+function drawRoadPair(y1, y2, row1) {
+  const screenY1 = canvas.height/2 - (y1 - offset) * tile;
+  const screenY2 = canvas.height/2 - (y2 - offset) * tile;
+  var top = Math.min(screenY1, screenY2);
+  var height = tile * 2;
+  
+  // Sfondo asfalto
+  ctx.fillStyle = '#444';
+  ctx.fillRect(0, top, canvas.width, height);
+
+  // Linee bianche continue sopra e sotto
+  ctx.strokeStyle = row1.workInProgress ? '#fe4' : '#fff';
+  ctx.fillStyle = row1.workInProgress ? '#fe4' : '#fff';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(0, top + 2);
+  ctx.lineTo(canvas.width, top + 2);
+  ctx.moveTo(0, top + height - 2);
+  ctx.lineTo(canvas.width, top + height - 2);
+  ctx.stroke();
+
+  // Linea tratteggiata centrale
+  ctx.setLineDash([12, 8]);
+  ctx.beginPath();
+  ctx.moveTo(0, top + tile);
+  ctx.lineTo(canvas.width, top + tile);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  
+  //i cartelli vanno disegnati DOPO
+  if (row1.cartType === 1) {
+    signsToDraw.push({ type: "speed", x: row1.cart - 25, y: screenY1 + 2 });
+  } else if (row1.cartType === 2) {
+    signsToDraw.push({ type: "cross", x: row1.cart - 25, y: screenY1 + 2 });
+  } else if (row1.cartType === 3) {
+    signsToDraw.push({ type: "slow", x: row1.cart - 25, y: screenY1 + 2 });
+  } else if (row1.cartType === 4) {
+    signsToDraw.push({ type: "noovertake", x: row1.cart - 25, y: screenY1 + 2 });
+  } else if (row1.cartType === 5) {
+    signsToDraw.push({ type: "arrow", x: row1.cart - 25, y: screenY1 + 2 });
+  } else if (row1.cartType === 6) {
+    signsToDraw.push({ type: "nostop", x: row1.cart - 25, y: screenY1 + 2 });
+  } else if (row1.cartType === 7) {
+    signsToDraw.push({ type: "autovelox", x: row1.cart - 25, y: screenY1 + 2 });
+  } 
+}
+
+
+
+
+
+    
+// Disegna un’auto più realistica
+function drawCar(c) {
+  const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
+  if (screenY < -tile || screenY > canvas.height + tile) return;
+
+  var w = tile * 0.9;
+  var h = tile * 0.6;
+  var x = c.x + (tile - w)/2;
+  var y = screenY + (tile - h)/2 - 5;
+
+  // Ombra sotto auto
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(x + w/2, y + h + 4, w*0.5, 4, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Corpo principale con gradiente
+  var grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, shadeColor(c.color, +20));
+  grad.addColorStop(1, shadeColor(c.color, -20));
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(x + w*0.1, y);
+  ctx.lineTo(x + w*0.9, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + h*0.3);
+  ctx.lineTo(x + w, y + h*0.7);
+  ctx.quadraticCurveTo(x + w, y + h, x + w*0.9, y + h);
+  ctx.lineTo(x + w*0.1, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h*0.7);
+  ctx.lineTo(x, y + h*0.3);
+  ctx.quadraticCurveTo(x, y, x + w*0.1, y);
+  ctx.fill();
+
+  // Ruote
+  var wheelR = h*0.25;
+  ctx.fillStyle = '#111';
+  ctx.beginPath();
+  ctx.arc(x + w*0.2, y + h + wheelR*0.3, wheelR, 0, Math.PI*2);
+  ctx.arc(x + w*0.8, y + h + wheelR*0.3, wheelR, 0, Math.PI*2);
+  ctx.fill();
+
+  // Cerchioni
+  ctx.fillStyle = '#888';
+  ctx.beginPath();
+  ctx.arc(x + w*0.2, y + h + wheelR*0.3, wheelR*0.6, 0, Math.PI*2);
+  ctx.arc(x + w*0.8, y + h + wheelR*0.3, wheelR*0.6, 0, Math.PI*2);
+  ctx.fill();
+
+  if (c.speed > 0) {
+    // Finestrini / tetto
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fillRect(x, y + h*0.15, w * 0.6, h*0.3);
+    ctx.fillRect(x + w * 0.7, y + h*0.15, w * 0.3, h*0.3);
+  
+    //luci
+    ctx.fillStyle = '#ff9';
+    ctx.fillRect(x + w - 1, y + h*0.6, 2, 6);
+	
+	//stop
+	ctx.fillStyle = '#900';
+    ctx.fillRect(x, y + h*0.6, 2, 6);	
+  } else {
+    // Finestrini / tetto
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.fillRect(x + w * 0.4, y + h*0.15, w * 0.6, h*0.3);
+    ctx.fillRect(x, y + h*0.15, w * 0.3, h*0.3);
+  
+    //luci
+    ctx.fillStyle = '#ff9';
+    ctx.fillRect(x, y + h*0.6, 2, 6);
+	
+	//stop
+	ctx.fillStyle = '#900';
+	ctx.fillRect(x + w - 1, y + h*0.6, 2, 6);
+  }
+}
+
+// Utility per ombreggiare colore esadecimale
+function shadeColor(color, percent) {
+  var f=parseInt(color.slice(1),16),t=percent<0?0:255,p=percent<0?percent*-1:percent;
+  var R=f>>16, G=f>>8&0x00FF, B=f&0x0000FF;
+  var newR=Math.round((t-R)*p/100+R),
+      newG=Math.round((t-G)*p/100+G),
+      newB=Math.round((t-B)*p/100+B);
+  return '#'+(0x1000000 + (newR<<16) + (newG<<8) + newB).toString(16).slice(1);
+}
+
+
+    // --- Update ---
+    function update() {
+	  // Interpolazione morbida dell'offset
+	  ///if (Math.abs(offset - targetOffset) < 0.1) offset=targetOffset;
+	  //else offset += (targetOffset > 0 ? 0.1 : -0.1); 
+	  offset += (targetOffset - offset) * 0.2;
+
+      for (let [y,row] of segments) {
+        if (row.type!=="road") continue;
+        for (let c of row.cars) {
+          c.x += c.speed;
+          if (c.speed>0 && c.x>canvas.width+tile) c.x=-tile;
+          if (c.speed<0 && c.x<-tile) c.x=canvas.width+tile;
+          const cy = c.y/tile;
+          if (Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(cy - offset) === 0) {
+            alert('💀 Game Over!');
+            isGameOver = true;
+          }
+        }
+      }
+    }
+
+    // --- Loop ---
+	let isGameOver = false;
+	let signsToDraw = [];//cartelli vanno disegnati DOPO
+    function draw() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      const sortedRows = Array.from(segments.keys()).sort((a,b)=>a-b);
+	  
+	  for (let y of sortedRows) {
+	  
+	    const row = segments.get(y);
+        
+		if (row.type === 'grass') {
+          drawGrass(y, row);
+        } else if (row.type === 'road') {
+          if (row.lane === 0) {
+            drawSingleRoad(y, row);
+            for (let car of row.cars) drawCar(car);
+          } else if (row.lane === 1) {
+            // Disegna la doppia carreggiata solo una volta
+            drawRoadPair(y, y + 1, row);
+            for (let car of row.cars) drawCar(car);
+
+            // Disegna anche le auto della corsia inferiore (y+1)
+            const lowerRow = segments.get(y + 1);
+            if (lowerRow && lowerRow.cars) {
+              for (let car of lowerRow.cars) drawCar(car);
+            }
+          } else if (row.lane === 2) {
+            // Niente strada, solo auto (già disegnata sopra)
+            continue;
+          }
+        }
+      }
+	  
+      drawFrog();
+	  
+	  for (let s of signsToDraw) {
+		if (s.type === "speed") drawSpeedLimitSign(s.x, s.y, 50);
+		else if (s.type === "slow") drawSlowSign(s.x, s.y);
+		else if (s.type === "cross") drawCrosswalkSign(s.x, s.y);
+		else if (s.type === "noovertake") drawNoOvertakingSign(s.x, s.y);
+		else if (s.type === "arrow") drawDirectionSign(s.x, s.y);
+		else if (s.type === "nostop") drawNoStoppingSign(s.x, s.y);
+		else if (s.type === "autovelox") drawAutoveloxColumn(s.x, s.y);
+	  }
+      signsToDraw = [];
+	  
+	  
+      ctx.fillStyle = 'white';
+      ctx.font = '16px sans-serif';
+	  ctx.textAlign = 'left';
+	  ctx.fillText('TargetOffset: ' + targetOffset, 10, 20);
+      ctx.fillText('Offset: ' + offset + targetOffset, 10, 30);
+      ctx.fillText('Frog: x=' + frog.x + ' y=' + frog.y, 280, 20);
+    }
+
+    function loop(){
+	  if(isGameOver) return;
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+
+
+
+  function drawFrog() {
+	const cx = frog.x * tile;
+    const cy = canvas.height / 2;
+    
+	ctx.save();
+	ctx.translate(cx, cy);  
+    ctx.scale(tile / 100, tile / 100);	
+
+    // Ombra sotto
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.beginPath();
+    ctx.ellipse(50, 88, 38, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Corpo verde
+    ctx.beginPath();
+    ctx.moveTo(18,30);
+    ctx.bezierCurveTo(18,18,28,8,44,8);
+    ctx.bezierCurveTo(60,8,70,18,82,30);
+    ctx.bezierCurveTo(88,38,88,56,78,68);
+    ctx.bezierCurveTo(68,82,32,82,22,68);
+    ctx.bezierCurveTo(12,56,12,42,18,30);
+    ctx.closePath();
+    ctx.fillStyle = '#7fe04a';
+    ctx.fill();
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = '#126312';
+    ctx.stroke();
+
+    // Leggera ombra a sinistra
+    const g = ctx.createLinearGradient(10,10,90,90);
+    g.addColorStop(0, 'rgba(0,0,0,0.06)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fill();
+
+    // Pancia bianca
+    ctx.beginPath();
+    ctx.ellipse(50,48,30,28,0,0,Math.PI*2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    // Ombra pancia
+    ctx.beginPath();
+    ctx.ellipse(50,55,20,6,0,0,Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    ctx.fill();
+
+    // Riflesso verde
+    ctx.beginPath();
+    ctx.moveTo(62,20);
+    ctx.quadraticCurveTo(45,18,40,28);
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+
+    // Occhi
+    ctx.fillStyle = '#7fe04a';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#126312';
+    // Occhio sinistro
+    ctx.beginPath();
+    ctx.ellipse(35,18,14,12,0,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    // Occhio destro
+    ctx.beginPath();
+    ctx.ellipse(65,18,14,12,0,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+
+    // Parte bianca occhi
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.ellipse(35,18,9,7,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(65,18,9,7,0,0,Math.PI*2);
+    ctx.fill();
+
+    // Pupille
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse(38,18,3.8,3.8,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(68,18,3.8,3.8,0,0,Math.PI*2); ctx.fill();
+
+    // Riflessi occhi
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath(); ctx.arc(39.6,16.4,1.1,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(69.6,16.4,1.1,0,Math.PI*2); ctx.fill();
+
+    // Narici
+    ctx.fillStyle = '#126312';
+    ctx.beginPath(); ctx.arc(49,26,1.6,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(55,26,1.6,0,Math.PI*2); ctx.fill();
+
+    // Zampe anteriori
+    ctx.fillStyle = '#68cd36';
+    ctx.strokeStyle = '#126312';
+    ctx.lineWidth = 2;
+
+    // Zampa sinistra
+    ctx.beginPath();
+    ctx.moveTo(28,56);
+    ctx.quadraticCurveTo(24,64,18,70);
+    ctx.quadraticCurveTo(14,74,20,76);
+    ctx.quadraticCurveTo(26,78,32,74);
+    ctx.quadraticCurveTo(36,70,34,64);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Zampa destra
+    ctx.beginPath();
+    ctx.moveTo(72,56);
+    ctx.quadraticCurveTo(76,64,82,70);
+    ctx.quadraticCurveTo(86,74,80,76);
+    ctx.quadraticCurveTo(74,78,68,74);
+    ctx.quadraticCurveTo(64,70,66,64);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Dita stilizzate
+    function drawToes(cx, cy, sign) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.quadraticCurveTo(cx + sign*6, cy+6, cx + sign*10, cy+10);
+      ctx.moveTo(cx+sign*6, cy+2);
+      ctx.quadraticCurveTo(cx+sign*10, cy+8, cx+sign*14, cy+12);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#0c5212';
+    ctx.lineWidth = 1.6;
+    drawToes(22,72,-1);
+    drawToes(78,72,1);
+
+    // Bocca
+    ctx.strokeStyle = '#0b4b0f';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(36,36);
+    ctx.quadraticCurveTo(50,43,64,36);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+  
+  
+  
+  
+  
+  let isMute = false;
+  function playSound(id) {
+	  if (isMute) return;
+	  const audio = document.getElementById(id);
+	  if (audio) {
+		audio.currentTime = 0;
+		audio.play().catch((e) => {
+		  console.warn("Errore riproduzione audio:", e);
+		});
+	  }
+	}
+
+  })();
+  </script>
+</body>
+</html>
+
+
+
+
+    
