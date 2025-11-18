@@ -11,11 +11,14 @@
       align-items: center;
       height: 100vh;
       margin: 0;
+	  overflow: hidden;
     }
     canvas {
-      border: 3px solid #fff;
-      background: #2e7d32;
-      display: block;
+      border: 2px solid #333;
+	  background: #383;
+	  flex-grow: 1;
+	  max-height: 100%;
+      max-width: 100%;
     }
   </style>
 </head>
@@ -24,8 +27,39 @@
   <audio id="cracraSound" preload="auto">
 	<source src="./cracra.mp3" type="audio/mpeg">
   </audio>
+  <audio id="horn1Sound" preload="auto">
+	<source src="./horn1.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="horn2Sound" preload="auto">
+	<source src="./horn2.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="policeSound" preload="auto">
+	<source src="./police.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="flashSound" preload="auto">
+	<source src="./flash.mp3" type="audio/mpeg">
+  </audio>
   <script>
   (() => {
+    const COLORS = {
+	  greenGrassLight:'#383', greenGrassDark:'#262', //erba
+	  white:'#fff', 
+	  black:'#000', //
+	  yellowCart:'#fe4',//giallo cartello
+	  redCart:'#d22',//rosso cartello
+	  blueCart:'#16c',//blu cartello
+	  
+	  orangeCart:'#f80',//arancione cartello + autovelox
+	  grayPole:'#777',//palo
+	  grayTarmacLight:'#666', grayTarmacDark:'#444',//asfalto
+	  grayWheels:'#111', grayRims:'#888',//ruote auto
+	  carsBwLights:'#900', carsFwLights:'#ff9',//luci auto
+	  carsBwLightsOn:'#f00', carsFwLightsOn:'#fff',//luci auto
+	  trafficLightRed:'#f00', trafficLightYellow:'#ff0', trafficLightGreen:'#0f0',
+	  trafficLightRedOff:'#400', trafficLightYellowOff:'#440', trafficLightGreenOff:'#040',
+	  policeBlueLightOn: '#00f', policeBlueLightOff: '#004',
+	  policeRedLightOn: '#f00', policeRedLightOff: '#400',
+	};
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
     const tile = 40;
@@ -39,7 +73,10 @@
 	let offset = 0;         // posizione attuale della camera
 	let targetOffset = 0;   // offset desiderato verso cui ci muoviamo
 	let level = 0;
-
+    
+	let godMode = true;
+	let isMute = true;
+	
     // Utilità
     const randomInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
     const carColors = [
@@ -94,8 +131,8 @@
 		  let cart = 0;
 		  let cartType = 0;
 		  if (Math.random() < 0.5) {
-		    cart = 1 + ((Math.random() * 10) | 0 ) * tile;//posizione
-		    cartType = 1 + ((Math.random() * 7) | 0);
+		    cart = (1 + ((Math.random() * 10) | 0 )) * tile;//posizione
+		    cartType = 1 + ((Math.random() * 8) | 0);
 		  }
           var rowA = { y: y, type: "road", lane: 1, cars: [], zebra: 0, workInProgress: workInProgress, cart: cart, cartType: cartType };
           var speedA = 1 + Math.random() * 1.5;
@@ -104,7 +141,8 @@
               x: (j * 5 + randomInt(0, 2)) * tile,
               y: y * tile,
               speed: speedA,
-              color: randomCarColor()
+              color: randomCarColor(),
+			  type: Math.random() < 0.1 ? "police" : "car"
             };
             rowA.cars.push(c);
           }
@@ -117,7 +155,8 @@
               x: (j * 5 + randomInt(0, 2)) * tile,
               y: (y+1) * tile,
               speed: speedB,
-              color: randomCarColor()
+              color: randomCarColor(),
+			  type: "car"
             };
             rowB.cars.push(c2);
           }
@@ -149,18 +188,19 @@
 		let cart = 0;
 		let cartType = 0;
 		if (Math.random() < 0.5) {
-		  cart = zebra ? zebra - dir : 1 + ((Math.random() * 9) | 0 ) * tile - dir;//posizione
-		  cartType = 1 + ((Math.random() * 7) | 0);
+		  cart = zebra ? zebra - dir : (1 + ((Math.random() * 9) | 0 )) * tile - (dir * tile);//posizione
+		  cartType = 1 + ((Math.random() * 8) | 0);
 		}
 		
         const row = { type: 'road', lane: 0, cars: [], zebra: zebra, zebraType: zebraType, workInProgress: workInProgress, cart: cart, cartType: cartType };
 		
-        for (let j=0;j<2;j++){
+        for (let j=0;j<3;j++){
           row.cars.push({
             x: (j * 5 + randomInt(0,2)) * tile,
             y: y*tile,
             speed: speed, 
-            color: randomCarColor()
+            color: randomCarColor(),
+			type: "car"
           });
         }
         segments.set(y,row);
@@ -172,7 +212,7 @@
 	  let hasLake = false;
       let lake = 0;
       if (Math.random() < 0.1) {
-          lake = 1 + ((Math.random() * 10) | 0 ) * tile;//posizione
+          lake = (1 + ((Math.random() * 10) | 0 )) * tile;//posizione
           hasLake = true;//tipo strisce
         }
 	  const row = { type:'grass', cars:[], hasLake: hasLake, lake: lake };
@@ -233,8 +273,8 @@
 
       // Sfondo sfumato
       var grad = ctx.createLinearGradient(0, screenY, 500, screenY + tile);
-      grad.addColorStop(0, '#2e7d32'); // verde chiaro in alto
-      grad.addColorStop(1, '#1b5e20'); // verde scuro in basso
+      grad.addColorStop(0, COLORS.greenGrassLight); // verde chiaro in alto
+      grad.addColorStop(1, COLORS.greenGrassDark); // verde scuro in basso
       ctx.fillStyle = grad;
 	  ctx.fillRect(0, screenY, canvas.width, tile);
 	  
@@ -302,12 +342,12 @@ function drawSingleRoad(y, row) {
   const screenY = canvas.height/2 - (y - offset)*tile;
 
   // Asfalto
-  ctx.fillStyle = '#666';
+  ctx.fillStyle = COLORS.grayTarmacLight;
   ctx.fillRect(0, screenY, canvas.width, tile);
 
   // linee continue giallo ogni 3 righe, altrimenti bianco
-  ctx.strokeStyle = row.workInProgress ? '#fe4' : '#fff';
-  ctx.fillStyle = row.workInProgress ? '#fe4' : '#fff';
+  ctx.strokeStyle = row.workInProgress ? COLORS.yellowCart : COLORS.white;
+  ctx.fillStyle = row.workInProgress ? COLORS.yellowCart : COLORS.white;
   ctx.lineWidth = 2;
   ctx.setLineDash([]);//y % 4 === 0 ? [12, 8] : []);
   ctx.beginPath();
@@ -350,304 +390,9 @@ function drawSingleRoad(y, row) {
     signsToDraw.push({ type: "nostop", x: row.cart - 25, y: screenY + 2 });
   } else if (row.cartType === 7) {
     signsToDraw.push({ type: "autovelox", x: row.cart - 25, y: screenY + 2 });
+  } else if (row.cartType === 8) {
+    signsToDraw.push({ type: "trafficlight" + (row.workInProgress ? "broken" : ""), x: row.cart - 25, y: screenY + 2 });
   }
-}
-
-
-function drawCrosswalkSign(x, y) {
-  const signWidth = 20;
-  const signHeight = 20;
-  const poleHeight = 20;
-
-  // --- Palo ---
-  ctx.fillStyle = '#777';
-  ctx.fillRect(x + signWidth / 2 - 1, y + signHeight, 2, poleHeight);
-
-  // --- Fondo blu del cartello ---
-  ctx.fillStyle = '#1565c0';
-  ctx.fillRect(x, y, signWidth, signHeight);
-
-  // --- Triangolo bianco ---
-  ctx.beginPath();
-  ctx.moveTo(x + signWidth / 2, y + 3);
-  ctx.lineTo(x + 3, y + signHeight - 3);
-  ctx.lineTo(x + signWidth - 3, y + signHeight - 3);
-  ctx.closePath();
-  ctx.fillStyle = '#fff';
-  ctx.fill();
-
-  // --- Omino stilizzato (bianco su blu scuro interno) ---
-  const cx = x + signWidth / 2;
-  const cy = y + signHeight / 2 + 1;
-
-  // Testa
-  ctx.beginPath();
-  ctx.arc(cx, cy - 4, 1.5, 0, Math.PI * 2);
-  ctx.fillStyle = '#000';
-  ctx.fill();
-
-  // Corpo (linea diagonale)
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - 2);
-  ctx.lineTo(cx - 3, cy + 3);
-  ctx.lineTo(cx + 3, cy + 3);
-  ctx.stroke();
-
-  // Braccia e gambe più visibili
-  ctx.beginPath();
-  ctx.moveTo(cx - 2, cy - 1);
-  ctx.lineTo(cx + 2, cy + 1);
-  ctx.moveTo(cx, cy + 3);
-  ctx.lineTo(cx, cy + 6);
-  ctx.stroke();
-}
-
-function drawDirectionSign(x, y) {
-  const radius = 10;          // Raggio del cartello
-  const poleHeight = 22;      // Altezza del palo
-  const cx = x + radius;
-  const cy = y + radius;
-
-  // --- Palo ---
-  ctx.fillStyle = '#777';
-  ctx.fillRect(cx - 2, cy + radius, 4, poleHeight);
-
-  // --- Cerchio blu ---
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fillStyle = '#24a';   // blu stile cartello europeo
-  ctx.fill();
-  ctx.closePath();
-
-  // --- Bordo bianco ---
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius - 1.5, 0, Math.PI * 2);
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = '#fff';
-  ctx.stroke();
-  ctx.closePath();
-
-  // --- Freccia bianca verso l'alto ---
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-
-  // punta della freccia
-  ctx.moveTo(cx, cy - radius + 3);
-
-  // lati obliqui
-  ctx.lineTo(cx - 5, cy + 2);
-  ctx.lineTo(cx - 2, cy + 2);
-
-  // gambo
-  ctx.lineTo(cx - 2, cy + 6);
-  ctx.lineTo(cx + 2, cy + 6);
-
-  // lato destro
-  ctx.lineTo(cx + 2, cy + 2);
-  ctx.lineTo(cx + 5, cy + 2);
-
-  ctx.closePath();
-  ctx.fill();
-}
-
-function drawNoOvertakingSign(x, y) {
-  const radius = 10;
-  const poleHeight = 22;
-  const cx = x + radius;
-  const cy = y + radius;
-
-  // --- Palo ---
-  ctx.fillStyle = '#777';
-  ctx.fillRect(cx - 1, cy + radius, 2, poleHeight);
-
-  // --- Cerchio bianco con bordo rosso ---
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fillStyle = "#fff";
-  ctx.fill();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "#d22";
-  ctx.stroke();
-  ctx.lineWidth = 1;
-
-  // ---------------------------------------------------------------------
-  //                 AUTO SAGOMATE – STILE CARTELLO REALE
-  // ---------------------------------------------------------------------
-
-  // --- Auto rossa (sinistra) ---
-  ctx.fillStyle = "#d22";
-  ctx.beginPath();
-  ctx.moveTo(cx - 8, cy + 3);   // parafango posteriore
-  ctx.lineTo(cx - 8, cy - 1);
-  ctx.lineTo(cx - 7, cy - 4);   // tetto inclinato
-  ctx.lineTo(cx - 2, cy - 4);
-  ctx.lineTo(cx - 1, cy - 1);   // cofano
-  ctx.lineTo(cx - 1, cy + 3);
-  ctx.closePath();
-  ctx.fill();
-
-  // Ruote
-  ctx.fillStyle = "#d22";
-  ctx.beginPath();
-  ctx.arc(cx - 7, cy + 3, 1.2, 0, Math.PI * 2);
-  ctx.arc(cx - 3, cy + 3, 1.2, 0, Math.PI * 2);
-  ctx.fill();
-
-
-  // --- Auto nera (destra) ---
-  ctx.fillStyle = "#000";
-  ctx.beginPath();
-  ctx.moveTo(cx + 1, cy + 3);  // parafango posteriore
-  ctx.lineTo(cx + 1, cy - 1);
-  ctx.lineTo(cx + 3, cy - 4);  // tetto inclinato
-  ctx.lineTo(cx + 8, cy - 4);
-  ctx.lineTo(cx + 8, cy - 1);  // cofano
-  ctx.lineTo(cx + 8, cy + 3);
-  ctx.closePath();
-  ctx.fill();
-
-  // Ruote
-  ctx.beginPath();
-  ctx.arc(cx + 3, cy + 3, 1.2, 0, Math.PI * 2);
-  ctx.arc(cx + 7, cy + 3, 1.2, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function drawNoStoppingSign(x, y) {
-  const radius = 10;
-  const cx = x + radius;
-  const cy = y + radius;
-  const poleHeight = 22;      // Altezza del palo
-
-  // --- Palo ---
-  ctx.fillStyle = '#777';
-  ctx.fillRect(cx - 2, cy + radius, 4, poleHeight);
-
-  // Cerchio blu
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fillStyle = "#25a";
-  ctx.fill();
-
-  // Bordo rosso
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "#d22";
-  ctx.stroke();
-
-  // Barra diagonale 1
-  ctx.strokeStyle = "#d22";
-  ctx.beginPath();
-  ctx.moveTo(cx - radius + 4, cy - radius + 4);
-  ctx.lineTo(cx + radius - 4, cy + radius - 4);
-  ctx.stroke();
-
-  // Barra diagonale 2
-  ctx.beginPath();
-  ctx.moveTo(cx - radius + 4, cy + radius - 4);
-  ctx.lineTo(cx + radius - 4, cy - radius + 4);
-  ctx.stroke();
-  ctx.lineWidth = 1;
-}
-
-
-function drawSpeedLimitSign(x, y, limit) {
-  const radius = 10;       // Raggio del cartello (diametro 20)
-  const poleHeight = 20;   // Altezza del palo
-
-  // --- Palo ---
-  ctx.fillStyle = '#777';
-  ctx.fillRect(x + radius - 1, y + radius * 2, 2, poleHeight);
-  
-  // --- Cerchio bianco (sfondo del cartello) ---
-  ctx.beginPath();
-  ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
-  ctx.fillStyle = '#fff';
-  ctx.fill();
-  ctx.closePath();
-
-  // --- Bordo rosso ---
-  ctx.beginPath();
-  ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = '#d22';
-  ctx.stroke();
-  ctx.closePath();
-
-  // --- Testo "50" ---
-  ctx.fillStyle = '#000';
-  ctx.font = 'bold 10px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(limit, x + radius, y+radius);
-}
-
-
-function drawSlowSign(x, y) {
-  const signWidth = 20;
-  const signHeight = 20;
-  const poleHeight = 20;
-
-  // --- Palo ---
-  ctx.fillStyle = '#777';
-  ctx.fillRect(x + signWidth / 2 - 1, y + signHeight, 2, poleHeight);
-
-  // --- Triangolo giallo ---
-  ctx.beginPath();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = '#d22';
-  ctx.moveTo(x + signWidth / 2, y + 3);
-  ctx.lineTo(x + 3, y + signHeight - 3);
-  ctx.lineTo(x + signWidth - 3, y + signHeight - 3);
-  ctx.closePath();
-  ctx.fillStyle = '#fe4';
-  ctx.fill();
-  ctx.stroke();
-  ctx.lineWidth = 1;
-
-  // --- Testo "!" ---
-  ctx.fillStyle = '#000';
-  ctx.font = 'bold 10px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText("!", x + signWidth/2, y+signHeight/2 + 2);
-}
-
-function drawAutoveloxColumn(x, y) {
-  //cartello
-  drawSpeedLimitSign(x + tile, y , 30);
-  // Dimensioni base (scalabili)
-  const w = 14;     // larghezza colonnina
-  const h = 30;     // altezza colonnina
-  const panelH = 20; // altezza pannello bianco/nero
-  x+=w;
-  y+=10;
-  // -------- Colonnina arancione --------
-  ctx.fillStyle = "#f80"; // arancione autovelox
-  ctx.fillRect(x, y, w, h);
-  
-  ctx.fillStyle = '#000';
-  ctx.fillRect(x + 2, y + 2, 10, 5);
-
-  // -------- Strisce nere diagonali --------
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 3;
-
-  ctx.beginPath();
-  ctx.moveTo(x + 2, y + 16);
-  ctx.lineTo(x + w - 2, y + 12);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(x + 2, y + 22);
-  ctx.lineTo(x + w - 2, y + 18);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(x + 2, y + 28);
-  ctx.lineTo(x + w - 2, y + 24);
-  ctx.stroke();
 }
 
 
@@ -659,12 +404,12 @@ function drawRoadPair(y1, y2, row1) {
   var height = tile * 2;
   
   // Sfondo asfalto
-  ctx.fillStyle = '#444';
+  ctx.fillStyle = COLORS.grayTarmacDark;
   ctx.fillRect(0, top, canvas.width, height);
 
   // Linee bianche continue sopra e sotto
-  ctx.strokeStyle = row1.workInProgress ? '#fe4' : '#fff';
-  ctx.fillStyle = row1.workInProgress ? '#fe4' : '#fff';
+  ctx.strokeStyle = row1.workInProgress ? COLORS.yellowCart : COLORS.white;
+  ctx.fillStyle = row1.workInProgress ? COLORS.yellowCart : COLORS.white;
   ctx.lineWidth = 2;
   ctx.setLineDash([]);
   ctx.beginPath();
@@ -698,8 +443,373 @@ function drawRoadPair(y1, y2, row1) {
     signsToDraw.push({ type: "nostop", x: row1.cart - 25, y: screenY1 + 2 });
   } else if (row1.cartType === 7) {
     signsToDraw.push({ type: "autovelox", x: row1.cart - 25, y: screenY1 + 2 });
+  } else if (row1.cartType === 8) {
+    signsToDraw.push({ type: "trafficlight" + (row1.workInProgress ? "broken" : ""), x: row1.cart - 25, y: screenY1 + 2 });
   } 
+  
 }
+
+
+
+function drawCrosswalkSign(x, y) {
+  const signWidth = 20;
+  const signHeight = 20;
+  const poleHeight = 20;
+
+  // --- Palo ---
+  ctx.fillStyle = COLORS.grayPole;
+  ctx.fillRect(x + signWidth / 2 - 1, y + signHeight, 2, poleHeight);
+
+  // --- Fondo blu del cartello ---
+  ctx.fillStyle = COLORS.blueCart;
+  ctx.fillRect(x, y, signWidth, signHeight);
+
+  // --- Triangolo bianco ---
+  ctx.beginPath();
+  ctx.moveTo(x + signWidth / 2, y + 3);
+  ctx.lineTo(x + 3, y + signHeight - 3);
+  ctx.lineTo(x + signWidth - 3, y + signHeight - 3);
+  ctx.closePath();
+  ctx.fillStyle = COLORS.white;
+  ctx.fill();
+
+  // --- Omino stilizzato (bianco su blu scuro interno) ---
+  const cx = x + signWidth / 2;
+  const cy = y + signHeight / 2 + 1;
+
+  // Testa
+  ctx.beginPath();
+  ctx.arc(cx, cy - 4, 1.5, 0, Math.PI * 2);
+  ctx.fillStyle = COLORS.black;
+  ctx.fill();
+
+  // Corpo (linea diagonale)
+  ctx.strokeStyle = COLORS.black;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - 2);
+  ctx.lineTo(cx - 3, cy + 3);
+  ctx.lineTo(cx + 3, cy + 3);
+  ctx.stroke();
+
+  // Braccia e gambe più visibili
+  ctx.beginPath();
+  ctx.moveTo(cx - 2, cy - 1);
+  ctx.lineTo(cx + 2, cy + 1);
+  ctx.moveTo(cx, cy + 3);
+  ctx.lineTo(cx, cy + 6);
+  ctx.stroke();
+}
+
+function drawDirectionSign(x, y) {
+  const radius = 10;          // Raggio del cartello
+  const poleHeight = 22;      // Altezza del palo
+  const cx = x + radius;
+  const cy = y + radius;
+
+  // --- Palo ---
+  ctx.fillStyle = COLORS.grayPole;
+  ctx.fillRect(cx - 2, cy + radius, 4, poleHeight);
+
+  // --- Cerchio blu ---
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fillStyle = COLORS.blueCart; // blu stile cartello europeo
+  ctx.fill();
+  ctx.closePath();
+
+  // --- Bordo bianco ---
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius - 1.5, 0, Math.PI * 2);
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = COLORS.white;
+  ctx.stroke();
+  ctx.closePath();
+
+  // --- Freccia bianca verso l'alto ---
+  ctx.fillStyle = COLORS.white;
+  ctx.beginPath();
+
+  // punta della freccia
+  ctx.moveTo(cx, cy - radius + 3);
+
+  // lati obliqui
+  ctx.lineTo(cx - 5, cy + 2);
+  ctx.lineTo(cx - 2, cy + 2);
+
+  // gambo
+  ctx.lineTo(cx - 2, cy + 6);
+  ctx.lineTo(cx + 2, cy + 6);
+
+  // lato destro
+  ctx.lineTo(cx + 2, cy + 2);
+  ctx.lineTo(cx + 5, cy + 2);
+
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawNoOvertakingSign(x, y) {
+  const radius = 10;
+  const poleHeight = 22;
+  const cx = x + radius;
+  const cy = y + radius;
+
+  // --- Palo ---
+  ctx.fillStyle = COLORS.grayPole;
+  ctx.fillRect(cx - 1, cy + radius, 2, poleHeight);
+
+  // --- Cerchio bianco con bordo rosso ---
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fillStyle = COLORS.white;
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = COLORS.redCart;
+  ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // ---------------------------------------------------------------------
+  //                 AUTO SAGOMATE – STILE CARTELLO REALE
+  // ---------------------------------------------------------------------
+
+  // --- Auto rossa (sinistra) ---
+  ctx.fillStyle = COLORS.redCart;
+  ctx.beginPath();
+  ctx.moveTo(cx - 8, cy + 3);   // parafango posteriore
+  ctx.lineTo(cx - 8, cy - 1);
+  ctx.lineTo(cx - 7, cy - 4);   // tetto inclinato
+  ctx.lineTo(cx - 2, cy - 4);
+  ctx.lineTo(cx - 1, cy - 1);   // cofano
+  ctx.lineTo(cx - 1, cy + 3);
+  ctx.closePath();
+  ctx.fill();
+
+  // Ruote
+  ctx.fillStyle = COLORS.redCart;
+  ctx.beginPath();
+  ctx.arc(cx - 7, cy + 3, 1.2, 0, Math.PI * 2);
+  ctx.arc(cx - 3, cy + 3, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+
+
+  // --- Auto nera (destra) ---
+  ctx.fillStyle = COLORS.black;
+  ctx.beginPath();
+  ctx.moveTo(cx + 1, cy + 3);  // parafango posteriore
+  ctx.lineTo(cx + 1, cy - 1);
+  ctx.lineTo(cx + 3, cy - 4);  // tetto inclinato
+  ctx.lineTo(cx + 8, cy - 4);
+  ctx.lineTo(cx + 8, cy - 1);  // cofano
+  ctx.lineTo(cx + 8, cy + 3);
+  ctx.closePath();
+  ctx.fill();
+
+  // Ruote
+  ctx.beginPath();
+  ctx.arc(cx + 3, cy + 3, 1.2, 0, Math.PI * 2);
+  ctx.arc(cx + 7, cy + 3, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawNoStoppingSign(x, y) {
+  const radius = 10;
+  const cx = x + radius;
+  const cy = y + radius;
+  const poleHeight = 22;      // Altezza del palo
+
+  // --- Palo ---
+  ctx.fillStyle = COLORS.grayPole;
+  ctx.fillRect(cx - 2, cy + radius, 4, poleHeight);
+
+  // Cerchio blu
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fillStyle = COLORS.blueCart;
+  ctx.fill();
+
+  // Bordo rosso
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = COLORS.redCart;
+  ctx.stroke();
+
+  // Barra diagonale 1
+  ctx.strokeStyle = COLORS.redCart;
+  ctx.beginPath();
+  ctx.moveTo(cx - radius + 4, cy - radius + 4);
+  ctx.lineTo(cx + radius - 4, cy + radius - 4);
+  ctx.stroke();
+
+  // Barra diagonale 2
+  ctx.beginPath();
+  ctx.moveTo(cx - radius + 4, cy + radius - 4);
+  ctx.lineTo(cx + radius - 4, cy - radius + 4);
+  ctx.stroke();
+  ctx.lineWidth = 1;
+}
+
+
+function drawSpeedLimitSign(x, y, limit) {
+  const radius = 10;       // Raggio del cartello (diametro 20)
+  const poleHeight = 20;   // Altezza del palo
+
+  // --- Palo ---
+  ctx.fillStyle = COLORS.grayPole;
+  ctx.fillRect(x + radius - 1, y + radius * 2, 2, poleHeight);
+  
+  // --- Cerchio bianco (sfondo del cartello) ---
+  ctx.beginPath();
+  ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+  ctx.fillStyle = COLORS.white;
+  ctx.fill();
+  ctx.closePath();
+
+  // --- Bordo rosso ---
+  ctx.beginPath();
+  ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = COLORS.redCart;
+  ctx.stroke();
+  ctx.closePath();
+
+  // --- Testo "50" ---
+  ctx.fillStyle = COLORS.black;
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(limit, x + radius, y+radius);
+}
+
+
+function drawSlowSign(x, y) {
+  const signWidth = 20;
+  const signHeight = 20;
+  const poleHeight = 20;
+
+  // --- Palo ---
+  ctx.fillStyle = COLORS.grayPole;
+  ctx.fillRect(x + signWidth / 2 - 1, y + signHeight, 2, poleHeight);
+
+  // --- Triangolo giallo ---
+  ctx.beginPath();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = COLORS.redCart;
+  ctx.moveTo(x + signWidth / 2, y + 3);
+  ctx.lineTo(x + 3, y + signHeight - 3);
+  ctx.lineTo(x + signWidth - 3, y + signHeight - 3);
+  ctx.closePath();
+  ctx.fillStyle = COLORS.yellowCart;
+  ctx.fill();
+  ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // --- Testo "!" ---
+  ctx.fillStyle = COLORS.black;
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText("!", x + signWidth/2, y+signHeight/2 + 2);
+}
+
+function drawAutoveloxColumn(x, y) {
+  //cartello
+  drawSpeedLimitSign(x + tile, y , 30);
+  // Dimensioni base (scalabili)
+  const w = 14;     // larghezza colonnina
+  const h = 30;     // altezza colonnina
+  const panelH = 20; // altezza pannello bianco/nero
+  x+=w;
+  y+=10;
+  const seconds = new Date().getSeconds();
+  
+  // -------- Colonnina arancione --------
+  ctx.fillStyle = COLORS.orangeCart;// arancione autovelox
+  ctx.fillRect(x, y, w, h);
+  
+  ctx.fillStyle = seconds % 8 === 0 ? COLORS.white : COLORS.black;
+  ctx.fillRect(x + 2, y + 2, 10, 5);
+  if (seconds % 8 === 0) {
+	drawGlow(x+7,y+4,20,COLORS.carsFwLights,COLORS.white,1,1,1,1);
+	playSound('flashSound');
+  }
+
+  // -------- Strisce nere diagonali --------
+  ctx.strokeStyle = COLORS.black;
+  ctx.fillStyle = COLORS.black;
+  ctx.lineWidth = 1;
+
+  ctx.beginPath();
+  ctx.moveTo(x + 1, y + 14);
+  ctx.lineTo(x + 1, y + 16);
+  ctx.lineTo(x + w - 1, y + 12);
+  ctx.lineTo(x + w - 1, y + 10);
+  ctx.closePath();
+  ctx.fill();  
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x + 1, y + 20);
+  ctx.lineTo(x + 1, y + 22);
+  ctx.lineTo(x + w - 1, y + 18);
+  ctx.lineTo(x + w - 1, y + 16);
+  ctx.closePath();
+  ctx.fill();  
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(x + 1, y + 26);
+  ctx.lineTo(x + 1, y + 28);
+  ctx.lineTo(x + w - 1, y + 24);
+  ctx.lineTo(x + w - 1, y + 22);
+  ctx.closePath();
+  ctx.fill();  
+  ctx.stroke();
+}
+
+function drawTrafficLightBroken(x, y) {
+  drawTrafficLight(x, y, true);
+}
+
+function drawTrafficLight(x, y, broken = false) {
+  const lightWidth = 8;
+  const lightHeight = 20;
+  const poleHeight = 20;
+  const lightRadius = 2;
+  const seconds = new Date().getSeconds();
+
+  // --- Palo ---
+  ctx.fillStyle = COLORS.grayPole;
+  ctx.fillRect(x + lightWidth / 2 - 2, y + lightHeight, 4, poleHeight);
+
+  // --- Corpo del semaforo ---
+  ctx.fillStyle = "#222";
+  ctx.fillRect(x, y, lightWidth, lightHeight);
+
+  // Rosso
+  if(seconds % 3 === 0 && !broken) drawGlow(x + lightWidth / 2, y + lightRadius * 2,10,COLORS.trafficLightRedOff,COLORS.trafficLightRed,1,1,1,1);
+  ctx.beginPath();
+  ctx.fillStyle = seconds % 3 === 0 && !broken ? COLORS.trafficLightRed : COLORS.trafficLightRedOff;
+  ctx.arc(x + lightWidth / 2, y + lightRadius * 2, lightRadius * 1.25, 0, Math.PI * 2);
+  ctx.fill();
+  
+
+  // Giallo
+  if(seconds % 3 === 1) drawGlow(x + lightWidth / 2, y + lightRadius * 5,10,COLORS.trafficLightYellowOff,COLORS.trafficLightYellow,1,1,1,1);
+  ctx.beginPath();
+  ctx.fillStyle = seconds % 3 === 1 ? COLORS.trafficLightYellow : COLORS.trafficLightYellowOff;
+  ctx.arc(x + lightWidth / 2, y + lightRadius * 5, lightRadius, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Verde
+  if(seconds % 3 === 2 && !broken) drawGlow(x + lightWidth / 2, y + lightRadius * 8,10,COLORS.trafficLightGreenOff,COLORS.trafficLightGreen,1,1,1,1);
+  ctx.beginPath();
+  ctx.fillStyle = seconds % 3 === 2 && !broken ? COLORS.trafficLightGreen : COLORS.trafficLightGreenOff;
+  ctx.arc(x + lightWidth / 2, y + lightRadius * 8, lightRadius, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+
+
 
 
 
@@ -710,6 +820,7 @@ function drawRoadPair(y1, y2, row1) {
 function drawCar(c) {
   const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
   if (screenY < -tile || screenY > canvas.height + tile) return;
+  const seconds = new Date().getSeconds();
 
   var w = tile * 0.9;
   var h = tile * 0.6;
@@ -741,49 +852,142 @@ function drawCar(c) {
 
   // Ruote
   var wheelR = h*0.25;
-  ctx.fillStyle = '#111';
+  ctx.fillStyle = COLORS.grayWheels;
   ctx.beginPath();
   ctx.arc(x + w*0.2, y + h + wheelR*0.3, wheelR, 0, Math.PI*2);
   ctx.arc(x + w*0.8, y + h + wheelR*0.3, wheelR, 0, Math.PI*2);
   ctx.fill();
 
   // Cerchioni
-  ctx.fillStyle = '#888';
+  ctx.fillStyle = COLORS.grayRims;
   ctx.beginPath();
   ctx.arc(x + w*0.2, y + h + wheelR*0.3, wheelR*0.6, 0, Math.PI*2);
   ctx.arc(x + w*0.8, y + h + wheelR*0.3, wheelR*0.6, 0, Math.PI*2);
   ctx.fill();
-
+  
+  let sameRow = Math.round(c.y/tile - offset) === 0;
+  let collision = !sameRow ? false :
+				c.speed > 0 ? (frog.x*tile - c.x) < tile * 3 && (frog.x*tile - c.x) > -1 : 
+				(c.x - frog.x*tile) < tile * 3 && (c.x - frog.x*tile) > -1;
+  let carLightSound = collision && Math.random() < 0.01;
+  
+  let isPolice = c.type === "police";
+  
   if (c.speed > 0) {
-    // Finestrini / tetto
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.fillRect(x, y + h*0.15, w * 0.6, h*0.3);
-    ctx.fillRect(x + w * 0.7, y + h*0.15, w * 0.3, h*0.3);
-  
-    //luci
-    ctx.fillStyle = '#ff9';
+    
+	if(carLightSound) {
+	  drawGlow(x + w,y+h*0.6+3,20,COLORS.carsFwLights,COLORS.carsFwLightsOn,1,0,0,1);
+	  drawGlow(x,y+h*0.6+3,10,COLORS.carsBwLights,COLORS.carsBwLightsOn,0,1,1,0);
+	  playSound('horn1Sound');
+	}
+	//luci
+    ctx.fillStyle = collision ? COLORS.carsFwLightsOn : COLORS.carsFwLights;
     ctx.fillRect(x + w - 1, y + h*0.6, 2, 6);
-	
 	//stop
-	ctx.fillStyle = '#900';
-    ctx.fillRect(x, y + h*0.6, 2, 6);	
-  } else {
-    // Finestrini / tetto
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.fillRect(x + w * 0.4, y + h*0.15, w * 0.6, h*0.3);
-    ctx.fillRect(x, y + h*0.15, w * 0.3, h*0.3);
-  
-    //luci
-    ctx.fillStyle = '#ff9';
+	ctx.fillStyle = collision ?  COLORS.carsBwLightsOn : COLORS.carsBwLights;
     ctx.fillRect(x, y + h*0.6, 2, 6);
 	
+	
+	if(isPolice) {
+	  // Finestrini / tetto
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillRect(x + w * 0.7, y + h*0.15, w * 0.3, h*0.3);
+	  if (seconds % 2 === 0) { 
+	    drawGlow(x + w / 4, y, 20, COLORS.policeBlueLightOff, COLORS.policeBlueLightOn, 0,0,1,1); 
+		ctx.fillStyle = COLORS.policeBlueLightOn;
+        ctx.fillRect(x + w / 4 - 2, y - 1, 4, 2);
+		ctx.fillStyle = COLORS.policeRedLightOff;
+        ctx.fillRect(x + 3 * w / 4 - 2, y - 1, 4, 2);
+		}
+	  else { 
+		drawGlow(x + 3 * w / 4, y, 20, COLORS.policeRedLightOff, COLORS.policeRedLightOn, 0,0,1,1); 
+		ctx.fillStyle = COLORS.policeRedLightOn;
+        ctx.fillRect(x + 3 * w / 4 - 2, y - 1, 4, 2);
+		ctx.fillStyle = COLORS.policeBlueLightOff;
+        ctx.fillRect(x + w / 4 - 2, y - 1, 4, 2);
+	  }
+	  if (seconds % 5 === 0) playSound('policeSound');
+	} 
+	else {
+	  // Finestrini / tetto
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillRect(x, y + h*0.15, w * 0.6, h*0.3);
+      ctx.fillRect(x + w * 0.7, y + h*0.15, w * 0.3, h*0.3);
+	}
+  }
+  else {
+    if(carLightSound) {
+	  drawGlow(x,y+h*0.6+3,20,COLORS.carsFwLights,COLORS.carsFwLightsOn,0,1,1,0);
+	  drawGlow(x+w,y+h*0.6+3,10,COLORS.carsBwLights,COLORS.carsBwLightsOn,1,0,0,1);
+	  playSound('horn2Sound');
+	}
+    //luci
+    ctx.fillStyle = collision ?  COLORS.carsFwLightsOn : COLORS.carsFwLights;
+    ctx.fillRect(x, y + h*0.6, 2, 6);
 	//stop
-	ctx.fillStyle = '#900';
+	ctx.fillStyle = collision ?  COLORS.carsBwLightsOn : COLORS.carsBwLights;
 	ctx.fillRect(x + w - 1, y + h*0.6, 2, 6);
+	
+	if (isPolice) {
+	  // Finestrini / tetto
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillRect(x, y + h*0.15, w * 0.3, h*0.3);
+	  if (seconds % 2 === 0) { 
+	    drawGlow(x + w / 4, y, 20, COLORS.policeBlueLightOff, COLORS.policeBlueLightOn, 0,0,1,1); 
+		ctx.fillStyle = COLORS.policeBlueLightOn;
+        ctx.fillRect(x + w / 4 - 2, y - 1, 4, 2);
+		ctx.fillStyle = COLORS.policeRedLightOff;
+        ctx.fillRect(x + 3 * w / 4 - 2, y - 1, 4, 2);
+		}
+	  else { 
+		drawGlow(x + 3 * w / 4, y, 20, COLORS.policeRedLightOff, COLORS.policeRedLightOn, 0,0,1,1); 
+		ctx.fillStyle = COLORS.policeRedLightOn;
+        ctx.fillRect(x + 3 * w / 4 - 2, y - 1, 4, 2);
+		ctx.fillStyle = COLORS.policeBlueLightOff;
+        ctx.fillRect(x + w / 4 - 2, y - 1, 4, 2);
+	  }
+	  if (seconds % 5 === 0) playSound('policeSound');
+	} 
+	else {
+	  // Finestrini / tetto
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.fillRect(x + w * 0.4, y + h*0.15, w * 0.6, h*0.3);
+      ctx.fillRect(x, y + h*0.15, w * 0.3, h*0.3);
+    }    
   }
 }
 
-// Utility per ombreggiare colore esadecimale
+//utility per effetto luce
+function drawGlow(x, y, radius, colorFrom, colorTo, q0, q1, q2, q3) {
+  const gradient = ctx.createRadialGradient(
+    x, y, 0,
+    x, y, radius
+  );
+
+  gradient.addColorStop(0, colorFrom);
+  gradient.addColorStop(1, hex3ToRgba(colorTo));
+  
+  ctx.fillStyle = gradient;
+  ctx.beginPath(); 
+  if(q0) ctx.arc(x, y, radius, Math.PI * 0, Math.PI * 0.5);
+  if(q1) ctx.arc(x, y, radius, Math.PI * 0.5, Math.PI);
+  if(q2) ctx.arc(x, y, radius, Math.PI, Math.PI * 1.5);
+  if(q3) ctx.arc(x, y, radius, Math.PI * 1.5, Math.PI * 2);
+  ctx.fill();  
+}
+
+function hex3ToRgba(hex) {
+  hex = hex.replace('#', '');
+
+  const r = parseInt(hex[0] + hex[0], 16);
+  const g = parseInt(hex[1] + hex[1], 16);
+  const b = parseInt(hex[2] + hex[2], 16);
+
+  return `rgba(${r}, ${g}, ${b}, 0)`;
+}
+
+
+//utility per ombreggiare colore esadecimale
 function shadeColor(color, percent) {
   var f=parseInt(color.slice(1),16),t=percent<0?0:255,p=percent<0?percent*-1:percent;
   var R=f>>16, G=f>>8&0x00FF, B=f&0x0000FF;
@@ -808,7 +1012,7 @@ function shadeColor(color, percent) {
           if (c.speed>0 && c.x>canvas.width+tile) c.x=-tile;
           if (c.speed<0 && c.x<-tile) c.x=canvas.width+tile;
           const cy = c.y/tile;
-          if (Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(cy - offset) === 0) {
+          if (!godMode && Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(cy - offset) === 0) {
             alert('💀 Game Over!');
             isGameOver = true;
           }
@@ -860,6 +1064,8 @@ function shadeColor(color, percent) {
 		else if (s.type === "arrow") drawDirectionSign(s.x, s.y);
 		else if (s.type === "nostop") drawNoStoppingSign(s.x, s.y);
 		else if (s.type === "autovelox") drawAutoveloxColumn(s.x, s.y);
+		else if (s.type === "trafficlight") drawTrafficLight(s.x, s.y);
+		else if (s.type === "trafficlightbroken") drawTrafficLightBroken(s.x, s.y);
 	  }
       signsToDraw = [];
 	  
@@ -922,7 +1128,7 @@ function shadeColor(color, percent) {
     // Pancia bianca
     ctx.beginPath();
     ctx.ellipse(50,48,30,28,0,0,Math.PI*2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = COLORS.white;
     ctx.fill();
 
     // Ombra pancia
@@ -954,7 +1160,7 @@ function shadeColor(color, percent) {
     ctx.fill(); ctx.stroke();
 
     // Parte bianca occhi
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = COLORS.white;
     ctx.beginPath();
     ctx.ellipse(35,18,9,7,0,0,Math.PI*2);
     ctx.fill();
@@ -963,7 +1169,7 @@ function shadeColor(color, percent) {
     ctx.fill();
 
     // Pupille
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = COLORS.black;
     ctx.beginPath(); ctx.ellipse(38,18,3.8,3.8,0,0,Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(68,18,3.8,3.8,0,0,Math.PI*2); ctx.fill();
 
@@ -1032,8 +1238,6 @@ function shadeColor(color, percent) {
   
   
   
-  
-  let isMute = false;
   function playSound(id) {
 	  if (isMute) return;
 	  const audio = document.getElementById(id);
