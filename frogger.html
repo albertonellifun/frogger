@@ -43,6 +43,8 @@
   (() => {
     const COLORS = {
 	  greenGrassLight:'#383', greenGrassDark:'#262', //erba
+	  blueRiverLight:'#27c', blueRiverDark:'#05a', //fiume
+	  greenLeafLight:'#b84', greenLeafDark:'#962', //foglie
 	  white:'#fff', 
 	  black:'#000', //
 	  yellowCart:'#fe4',//giallo cartello
@@ -74,8 +76,8 @@
 	let targetOffset = 0;   // offset desiderato verso cui ci muoviamo
 	let level = 0;
     
-	let godMode = false;
-	let isMute = false;
+	let godMode = false;//true;
+	let isMute = true;
 	
     // Utilità
     const randomInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
@@ -109,16 +111,18 @@
       if (segments.has(y)) return; // già esistente
    
       let countGrass = 0;
+	  let countRiver = 0;
 	  let countRoad = 0;
 	  let countDouble = 0;
 	  let countTot = 0;
 	  for (const [y, row] of segments) {
-	    countGrass = countGrass + (row.type == "grass" ? 1 : 0);
-		countRoad = countRoad + (row.type == "road" && !row.lane ? 1 : 0);
-		countDouble = countDouble + (row.type == "road" && row.lane ? 1 : 0);
+	    countGrass = countGrass + (row.type === "grass" ? 1 : 0);
+		countRoad = countRoad + (row.type === "road" && !row.lane ? 1 : 0);
+		countDouble = countDouble + (row.type === "road" && row.lane ? 1 : 0);
+		countRiver = countRiver + (row.type === "river" ? 1 : 0);
 		countTot++;
       }
-	  console.log('grass='+countGrass+' road='+countRoad+' double='+countDouble);
+	  console.log('grass='+countGrass+' road='+countRoad+' double='+countDouble+ ' river='+countRiver);
 	  
       // Probabilità di generare strada doppia
       const makeDoubleRoad = y !== 0 && (countDouble<3 || countGrass>countTot/2);//Math.random() < 0.25 && (countGrass - countRoad) > 1;
@@ -196,7 +200,7 @@
 		
         for (let j=0;j<3;j++){
           row.cars.push({
-            x: (j * 5 + randomInt(0,2)) * tile,
+            x: (j * 3 + randomInt(0,2)) * tile,
             y: y*tile,
             speed: speed, 
             color: randomCarColor(),
@@ -208,6 +212,24 @@
         return;
       }
       
+	  const makeRiver = y !== 0 && countRiver == 0;
+	  if (makeRiver) {
+	    const dir = Math.random() < 0.5 ? 1 : -1;
+        const speed = dir * 0.2;
+		const row = { type: 'river', woods: []};
+		for (let j=0;j<3;j++) {
+		  row.woods.push({
+		    x : (j * 3 + randomInt(0,2)) * tile,
+			y : y * tile,
+			speed : speed,
+			type : Math.random() < 0.5 ? "leaf" : "daisy"
+		  });
+		}
+		segments.set(y,row);
+		console.log('generate '+y+' frog y'+frog.y+ ' ->> river', row);
+		return;
+	  }
+	  
       //erba
 	  let hasLake = false;
       let lake = 0;
@@ -266,6 +288,55 @@
     }
 
 
+  //fiume
+  function drawRiver(y, row) {
+    const screenY = canvas.height / 2 - (y - offset) * tile;
+
+    //sfodo sfumato verde
+	var grad = ctx.createLinearGradient(0, screenY, 500, screenY + tile);
+    grad.addColorStop(0, COLORS.greenGrassLight); // verde chiaro in alto
+    grad.addColorStop(1, COLORS.greenGrassDark); // verde scuro in basso
+    ctx.fillStyle = grad;
+	ctx.fillRect(0, screenY, canvas.width, tile);
+	
+	//acqua sfumata
+    const gradWater = ctx.createLinearGradient(0, screenY, 0, screenY + tile);
+    gradWater.addColorStop(0, COLORS.blueRiverLight);
+    gradWater.addColorStop(1, COLORS.blueRiverDark);
+    ctx.fillStyle = gradWater;
+	
+	//bordi ondulati
+    const waveHeight = tile / 6;//altezza onda in px
+    const waveLength = tile * 2;//distanza onde in px
+
+    ctx.beginPath();
+
+    //bordo alto
+    ctx.moveTo(0, screenY);
+    for (let x = 0; x <= canvas.width; x += waveLength) {
+        ctx.quadraticCurveTo(
+            x + waveLength / 2,          // punto di controllo
+            screenY + waveHeight,        // picco dell’onda
+            x + waveLength,              // punto finale
+            screenY                       // ritorno alla linea base
+        );
+    }
+
+    //bordo basso
+    const bottomY = screenY + tile - waveHeight;
+    ctx.lineTo(canvas.width, bottomY);
+    for (let x = canvas.width; x >= 0; x -= waveLength) {
+        ctx.quadraticCurveTo(
+            x - waveLength / 2,
+            bottomY + waveHeight,        // picco verso il basso
+            x - waveLength,
+            bottomY
+        );
+    }
+
+    ctx.closePath();
+    ctx.fill();
+}
   
   //erbetta
   function drawGrass(y, row) {
@@ -283,8 +354,8 @@
 		const lakeX = row.lake;
 		const lakeY = screenY + tile * 0.10;
 
-		const rx = tile * 1.0;
-		const ry = tile * 0.32;
+		const rx = tile * 0.5;
+		const ry = tile * 0.4;
 
 		const cx = lakeX + rx;
 		const cy = lakeY + ry;
@@ -814,9 +885,100 @@ function drawTrafficLight(x, y, broken = false) {
 
 
 
+//disegna le foglie nel fiume
+function drawLeaf(c) { 
+  const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
+  if (screenY < -tile || screenY > canvas.height + tile) return;
+
+  const w = tile * 1.2;
+  const h = tile * 0.7;
+  //angolo alto sinistra
+  const x = c.x + (tile - w)/2;
+  const y = screenY + (tile - h)/2 - 2;
+  //centro
+  const ccx = x + w/2;
+  const ccy = y + h/2;
+  
+  //ombra intorno
+  ctx.fillStyle = "rgba(0,0,0,0.05)";
+  ctx.beginPath();
+  ctx.ellipse(x + w/2, y + h/2, w / 2, h / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.save();
+  if(c.type === "daisy") {
+	//margherita
+	const petalCount = 8;
+	const petalLength = tile * 0.2;
+	const petalWidth  = tile * 0.1;
+	
+	for (let i = 0; i < petalCount; i++) {
+		const angle = (i / petalCount) * Math.PI * 2;
+		const px = ccx + Math.sin(angle) * petalLength;
+        const py = ccy - Math.cos(angle) * petalLength;
+		ctx.beginPath();
+		ctx.ellipse(
+		  px,
+		  py, 
+		  petalWidth,
+		  petalLength,
+		  angle,
+		  0,
+		  Math.PI * 2
+		);
+
+		ctx.fillStyle = COLORS.white;
+		ctx.fill();
+		ctx.lineWidth = w * 0.015;
+		ctx.strokeStyle = COLORS.black;
+		ctx.stroke();
+	}
+
+	// ====== CENTRO GIALLO ======
+	ctx.beginPath();
+	ctx.arc(ccx, ccy, w * 0.15, 0, Math.PI*2);
+	ctx.fillStyle = COLORS.orangeCart;
+	ctx.fill();
+
+	  // contorno leggero
+	ctx.strokeStyle = COLORS.black;
+	ctx.lineWidth = w * 0.015;
+	ctx.stroke();
+  } else {
+	//fogliona da palude
+	ctx.fillStyle = "#6aa851";   // verde foglia galleggiante
+  ctx.beginPath();
+  ctx.ellipse(x + w/2 - 2, y + h/2 - 2, w / 2 - 2, h / 2 - 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  
+  
+  //taglio
+  ctx.beginPath();
+  ctx.strokeStyle = "#3c6d2e";
+  ctx.lineWidth = w / 30;
+  ctx.moveTo(ccx, ccy);
+  ctx.lineTo(ccx + (c.speed > 0 ? w/3 : -w/3), ccy + h/4);
+  ctx.stroke();
+
+  //bordo
+  ctx.beginPath();
+  ctx.strokeStyle = "#3c6d2e";
+  ctx.lineWidth = w / 50;
+  ctx.stroke();
+
+  	}
+
+  ctx.restore();
+}
+
+
+
+
+
+
 
     
-// Disegna un’auto più realistica
+//disegna le automobili
 function drawCar(c) {
   const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
   if (screenY < -tile || screenY > canvas.height + tile) return;
@@ -1004,19 +1166,51 @@ function shadeColor(color, percent) {
 	  ///if (Math.abs(offset - targetOffset) < 0.1) offset=targetOffset;
 	  //else offset += (targetOffset > 0 ? 0.1 : -0.1); 
 	  offset += (targetOffset - offset) * 0.2;
+	  
+	  if (frog.x < 0) frog.x = 0;
+	  if (frog.x > 9) frog.x = 9;
 
       for (let [y,row] of segments) {
-        if (row.type!=="road") continue;
-        for (let c of row.cars) {
-          c.x += c.speed;
-          if (c.speed>0 && c.x>canvas.width+tile) c.x=-tile;
-          if (c.speed<0 && c.x<-tile) c.x=canvas.width+tile;
-          const cy = c.y/tile;
-          if (!godMode && Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(cy - offset) === 0) {
-            alert('💀 Game Over!');
-            isGameOver = true;
-          }
+        //erbetta
+		if (row.type === "grass") {
+		  if (row.hasLake) {
+		    if (!godMode && Math.abs(row.lake/tile - frog.x) < 0.5 && Math.round(y - offset) === 0) {
+              alert('💀 Game Over!');
+              isGameOver = true;
+            }
+		  }
         }
+		//fiume
+		if (row.type === "river") {
+		  let flagSave = Math.round(y - offset) === 0 ? false : true;
+		  for (let c of row.woods) {
+		    c.x += c.speed;
+		    const cy = c.y/tile;
+			if (frog.x < 0 || frog.x > 9) flagSave = false;
+			else if (!godMode && Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(y - offset) === 0) {
+              flagSave = true;
+			  frog.x = c.x/tile;
+            }
+		  }
+		  if (!flagSave) {
+		    alert('💀 Game Over!');
+            isGameOver = true;
+		  }
+		}
+		//strada
+		if (row.type === "road") {
+		  //collisioni con auto
+          for (let c of row.cars) {
+            c.x += c.speed;
+            if (c.speed>0 && c.x>canvas.width+tile) c.x=-tile;
+            if (c.speed<0 && c.x<-tile) c.x=canvas.width+tile;
+            const cy = c.y/tile;
+            if (!godMode && Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(cy - offset) === 0) {
+              alert('💀 Game Over!');
+              isGameOver = true;
+            }
+          }
+		}
       }
     }
 
@@ -1033,7 +1227,10 @@ function shadeColor(color, percent) {
         
 		if (row.type === 'grass') {
           drawGrass(y, row);
-        } else if (row.type === 'road') {
+        } else if (row.type === 'river') {
+		  drawRiver(y, row);
+		  for (let leaf of row.woods) drawLeaf(leaf);
+		} else if (row.type === 'road') {
           if (row.lane === 0) {
             drawSingleRoad(y, row);
             for (let car of row.cars) drawCar(car);
@@ -1253,7 +1450,6 @@ function shadeColor(color, percent) {
   </script>
 </body>
 </html>
-
 
 
 
