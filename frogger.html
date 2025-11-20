@@ -409,7 +409,25 @@
 		ctx.beginPath();
 		ctx.ellipse(cx, cy, rx * 0.45, ry * 0.45, 0, 0, Math.PI * 2);
 		ctx.stroke();
+		
+		
+		//squaletto
+		const seconds = new Date().getSeconds() % 10;
+        ctx.beginPath();
+		ctx.moveTo(cx-10+seconds, cy - tile/3);
+		ctx.lineTo(cx-10+seconds, cy);
+		ctx.lineTo(cx-10+seconds + tile/3, cy);
+        ctx.arc(cx-10+seconds, cy, tile/3, 3 * Math.PI / 2, 2 * Math.PI);
+		ctx.closePath();
+		ctx.fillStyle = COLORS.grayTarmacDark;
+        ctx.fill();
+		ctx.fillRect(cx-15+seconds, cy, 20, 1);
+		ctx.fillRect(cx-12+seconds, cy+2, 18, 1);
+		ctx.fillRect(cx-8+seconds, cy+4, 8, 1);
 	  }
+		
+		
+        
   }
 
     
@@ -976,24 +994,17 @@ function drawLeaf(c) {
 	ctx.stroke();
   
   } else if (c.type === "turtle"){
-  // ====================================================
-  //                     GUSCIO
-  // ====================================================
+  //guscio ovale
   ctx.fillStyle = createDiamondPattern(ctx);
   ctx.strokeStyle = COLORS.brownTurtleBorder;
   ctx.lineWidth = 1;
-  //guscio ovale
   ctx.beginPath();
   ctx.ellipse(ccx, ccy, w*0.4, h*0.38, 0, 0, Math.PI*2);
   ctx.fill();
   ctx.stroke();
   
-  
 
-
-  // ====================================================
-  //                      TESTA
-  // ====================================================
+  //testa
   const headW = w * 0.15;
   const headH = w * 0.1
   const direction = c.speed < 0 ? 1 : -1;
@@ -1007,7 +1018,7 @@ function drawLeaf(c) {
   ctx.fill();
   ctx.stroke();
 
-  // Occhi
+  //occhi
   ctx.fillStyle = COLORS.greenTurtleDark;
   ctx.beginPath();
   ctx.arc(ccx - w*0.50*direction, ccy - h*0.06, w*0.022, 0, Math.PI*2);
@@ -1016,11 +1027,16 @@ function drawLeaf(c) {
   ctx.arc(ccx - w*0.50*direction, ccy + h*0.06, w*0.022, 0, Math.PI*2);
   ctx.fill();
 
+  //rana disegnata sempre ad y = canvas.height / 2 -> a me basta che screenY-canvas.height/2 sia zero
+  if(Math.abs(c.x/tile - frog.x) < 0.5 && Math.abs(screenY - canvas.height/2) < 0.5) {
+    //rana sul groppone
+	ctx.fillStyle = COLORS.white;
+    ctx.font = '16px sans-serif';
+	ctx.textAlign = 'center';
+	ctx.fillText('?', ccx - w * 0.7 * direction, ccy - 5);
+  }
 
-  // ====================================================
-  //                       ZAMPE (non tonde)
-  //       trapezi che sporgono dal guscio
-  // ====================================================
+  //zampe
   ctx.fillStyle = COLORS.greenTurtleLight;
   ctx.strokeStyle = COLORS.greenTurleBorder;
 
@@ -1036,38 +1052,35 @@ function drawLeaf(c) {
   const legW = w * 0.22;
   const legH = h * 0.30;
 
-  // Anteriore superiore sinistra
+  //anteriore superiore sinistra
   leg([
     {x: ccx - w*0.37, y: ccy - h*0.23},
     {x: ccx - w*0.50, y: ccy - h*0.40},
     {x: ccx - w*0.25, y: ccy - h*0.33},
   ]);
 
-  // Anteriore inferiore sinistra
+  //anteriore inferiore sinistra
   leg([
     {x: ccx - w*0.37, y: ccy + h*0.23},
     {x: ccx - w*0.50, y: ccy + h*0.40},
     {x: ccx - w*0.25, y: ccy + h*0.33},
   ]);
 
-  // Posteriore superiore destra
+  //posteriore superiore destra
   leg([
     {x: ccx + w*0.37, y: ccy - h*0.23},
     {x: ccx + w*0.50, y: ccy - h*0.40},
     {x: ccx + w*0.25, y: ccy - h*0.33},
   ]);
 
-  // Posteriore inferiore destra
+  //posteriore inferiore destra
   leg([
     {x: ccx + w*0.37, y: ccy + h*0.23},
     {x: ccx + w*0.50, y: ccy + h*0.40},
     {x: ccx + w*0.25, y: ccy + h*0.33},
   ]);
 
-  // ====================================================
-  //                          CODA (non tonda)
-  //        piccola punta triangolare verso destra
-  // ====================================================
+  //coda
   ctx.beginPath();
   ctx.moveTo(ccx + w*0.60*direction, ccy);
   ctx.lineTo(ccx + w*0.40*direction, ccy - h*0.1);
@@ -1081,25 +1094,23 @@ function drawLeaf(c) {
   } else {
 	//fogliona da palude
 	ctx.fillStyle = COLORS.greenLeafLight;
-  ctx.beginPath();
-  ctx.ellipse(x + w/2 - 2, y + h/2 - 2, w / 2 - 2, h / 2 - 2, 0, 0, Math.PI * 2);
-  ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x + w/2 - 2, y + h/2 - 2, w / 2 - 2, h / 2 - 2, 0, 0, Math.PI * 2);
+    ctx.fill();
   
-  
-  //taglio
-  ctx.beginPath();
-  ctx.strokeStyle = COLORS.greenLeafDark;
-  ctx.lineWidth = w / 30;
-  ctx.moveTo(ccx, ccy);
-  ctx.lineTo(ccx + (c.speed > 0 ? w/3 : -w/3), ccy + h/4);
-  ctx.stroke();
-
-  //bordo
-  ctx.beginPath();
-  ctx.strokeStyle = COLORS.greenLeafDark;
-  ctx.lineWidth = w / 50;
-  ctx.stroke();
-
+    //taglio
+    ctx.beginPath();
+    ctx.strokeStyle = COLORS.greenLeafDark;
+    ctx.lineWidth = w / 30;
+    ctx.moveTo(ccx, ccy);
+    ctx.lineTo(ccx + (c.speed > 0 ? w/3 : -w/3), ccy + h/4);
+    ctx.stroke();
+    
+    //bordo
+    ctx.beginPath();
+    ctx.strokeStyle = COLORS.greenLeafDark;
+    ctx.lineWidth = w / 50;
+    ctx.stroke();
   	}
 
   ctx.restore();
@@ -1410,7 +1421,8 @@ function shadeColor(color, percent) {
 	  ctx.textAlign = 'left';
 	  ctx.fillText('TargetOffset: ' + targetOffset, 10, 20);
       ctx.fillText('Offset: ' + offset + targetOffset, 10, 30);
-      ctx.fillText('Frog: x=' + frog.x + ' y=' + frog.y, 280, 20);
+      ctx.fillText('Frog: x=' + frog.x, 280, 20);
+	  ctx.fillText('Frog: y=' + frog.y, 280, 30);
     }
 
     function loop(){
