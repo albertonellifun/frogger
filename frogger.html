@@ -44,9 +44,14 @@
     const COLORS = {
 	  greenGrassLight:'#383', greenGrassDark:'#262', //erba
 	  blueRiverLight:'#27c', blueRiverDark:'#05a', //fiume
-	  greenLeafLight:'#b84', greenLeafDark:'#962', //foglie
+	  greenLeafLight:'#383', greenLeafDark:'#161', //foglie
+	  daisyCenterLight:'#fb2', daisyCenterBorder:'#f80', //margherita
 	  white:'#fff', 
-	  black:'#000', //
+	  black:'#000',
+	  gray: '#ddd',
+	  brownTutleDark:'#642', brownTurleLight:'#753', brownTurtleBorder:'#420',
+	  greenTurtleDark:'#262', greenTurtleLight:'#7a6', greenTurleBorder:'#141',
+	  
 	  yellowCart:'#fe4',//giallo cartello
 	  redCart:'#d22',//rosso cartello
 	  blueCart:'#16c',//blu cartello
@@ -217,12 +222,12 @@
 	    const dir = Math.random() < 0.5 ? 1 : -1;
         const speed = dir * 0.2;
 		const row = { type: 'river', woods: []};
-		for (let j=0;j<3;j++) {
+		for (let j=0;j<4;j++) {
 		  row.woods.push({
-		    x : (j * 3 + randomInt(0,2)) * tile,
+		    x : (j * 3 + randomInt(0,1)) * tile,
 			y : y * tile,
 			speed : speed,
-			type : Math.random() < 0.5 ? "leaf" : "daisy"
+			type : j % 3 === 0 ? "turtle" : j % 3 === 1 ? "daisy" : "leaf"
 		  });
 		}
 		segments.set(y,row);
@@ -853,7 +858,7 @@ function drawTrafficLight(x, y, broken = false) {
   ctx.fillRect(x + lightWidth / 2 - 2, y + lightHeight, 4, poleHeight);
 
   // --- Corpo del semaforo ---
-  ctx.fillStyle = "#222";
+  ctx.fillStyle = COLORS.grayPole;
   ctx.fillRect(x, y, lightWidth, lightHeight);
 
   // Rosso
@@ -882,6 +887,33 @@ function drawTrafficLight(x, y, broken = false) {
 
 
 
+// --- PATTERN A ROMBI -----------------------------------
+function createDiamondPattern(ctx) {
+  const pCanvas = document.createElement('canvas');
+  const pCtx = pCanvas.getContext('2d');
+
+  const size = 10;      // grandezza del modulo
+  pCanvas.width = size;
+  pCanvas.height = size;
+
+  // sfondo
+  pCtx.fillStyle = COLORS.brownTurleLight;
+  pCtx.fillRect(0, 0, size, size);
+
+  // rombi (2 triangoli che formano un rombo)
+  pCtx.strokeStyle = COLORS.brownTutleDark;
+  pCtx.lineWidth = 1;
+
+  pCtx.beginPath();
+  pCtx.moveTo(size / 2, 0);
+  pCtx.lineTo(size, size / 2);
+  pCtx.lineTo(size / 2, size);
+  pCtx.lineTo(0, size / 2);
+  pCtx.closePath();
+  pCtx.stroke();
+
+  return ctx.createPattern(pCanvas, 'repeat');
+}
 
 
 
@@ -909,13 +941,13 @@ function drawLeaf(c) {
   if(c.type === "daisy") {
 	//margherita
 	const petalCount = 8;
-	const petalLength = tile * 0.2;
-	const petalWidth  = tile * 0.1;
+	const petalLength = tile * 0.25;
+	const petalWidth  = tile * 0.08;
 	
 	for (let i = 0; i < petalCount; i++) {
 		const angle = (i / petalCount) * Math.PI * 2;
 		const px = ccx + Math.sin(angle) * petalLength;
-        const py = ccy - Math.cos(angle) * petalLength;
+        const py = ccy - Math.cos(angle) * 3 * petalLength / 5;
 		ctx.beginPath();
 		ctx.ellipse(
 		  px,
@@ -930,23 +962,125 @@ function drawLeaf(c) {
 		ctx.fillStyle = COLORS.white;
 		ctx.fill();
 		ctx.lineWidth = w * 0.015;
-		ctx.strokeStyle = COLORS.black;
+		ctx.strokeStyle = COLORS.gray;
 		ctx.stroke();
 	}
 
-	// ====== CENTRO GIALLO ======
+	//centro
 	ctx.beginPath();
 	ctx.arc(ccx, ccy, w * 0.15, 0, Math.PI*2);
-	ctx.fillStyle = COLORS.orangeCart;
+	ctx.fillStyle = COLORS.daisyCenterLight;
 	ctx.fill();
-
-	  // contorno leggero
-	ctx.strokeStyle = COLORS.black;
+	ctx.strokeStyle = COLORS.daisyCenterBorder;
 	ctx.lineWidth = w * 0.015;
 	ctx.stroke();
+  
+  } else if (c.type === "turtle"){
+  // ====================================================
+  //                     GUSCIO
+  // ====================================================
+  ctx.fillStyle = createDiamondPattern(ctx);
+  ctx.strokeStyle = COLORS.brownTurtleBorder;
+  ctx.lineWidth = 1;
+  //guscio ovale
+  ctx.beginPath();
+  ctx.ellipse(ccx, ccy, w*0.4, h*0.38, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.stroke();
+  
+  
+
+
+  // ====================================================
+  //                      TESTA
+  // ====================================================
+  const headW = w * 0.15;
+  const headH = w * 0.1
+  const direction = c.speed < 0 ? 1 : -1;
+  
+  ctx.fillStyle = COLORS.greenTurtleLight;
+  ctx.strokeStyle = COLORS.greenTurleBorder;
+  ctx.beginPath();
+  ctx.ellipse(ccx - w*0.38*direction, ccy, headW, headH, 0, direction > 0 ? Math.PI / 2 : 3 * Math.PI / 2, direction > 0 ? 3 * Math.PI / 2 : Math.PI / 2);
+  ctx.moveTo(ccx - w*0.38*direction, ccy-headH);
+  ctx.lineTo(ccx - w*0.38*direction, ccy+headH);
+  ctx.fill();
+  ctx.stroke();
+
+  // Occhi
+  ctx.fillStyle = COLORS.greenTurtleDark;
+  ctx.beginPath();
+  ctx.arc(ccx - w*0.50*direction, ccy - h*0.06, w*0.022, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(ccx - w*0.50*direction, ccy + h*0.06, w*0.022, 0, Math.PI*2);
+  ctx.fill();
+
+
+  // ====================================================
+  //                       ZAMPE (non tonde)
+  //       trapezi che sporgono dal guscio
+  // ====================================================
+  ctx.fillStyle = COLORS.greenTurtleLight;
+  ctx.strokeStyle = COLORS.greenTurleBorder;
+
+  function leg(vertices) {
+    ctx.beginPath();
+    ctx.moveTo(vertices[0].x, vertices[0].y);
+    vertices.slice(1).forEach(v => ctx.lineTo(v.x, v.y));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  const legW = w * 0.22;
+  const legH = h * 0.30;
+
+  // Anteriore superiore sinistra
+  leg([
+    {x: ccx - w*0.37, y: ccy - h*0.23},
+    {x: ccx - w*0.50, y: ccy - h*0.40},
+    {x: ccx - w*0.25, y: ccy - h*0.33},
+  ]);
+
+  // Anteriore inferiore sinistra
+  leg([
+    {x: ccx - w*0.37, y: ccy + h*0.23},
+    {x: ccx - w*0.50, y: ccy + h*0.40},
+    {x: ccx - w*0.25, y: ccy + h*0.33},
+  ]);
+
+  // Posteriore superiore destra
+  leg([
+    {x: ccx + w*0.37, y: ccy - h*0.23},
+    {x: ccx + w*0.50, y: ccy - h*0.40},
+    {x: ccx + w*0.25, y: ccy - h*0.33},
+  ]);
+
+  // Posteriore inferiore destra
+  leg([
+    {x: ccx + w*0.37, y: ccy + h*0.23},
+    {x: ccx + w*0.50, y: ccy + h*0.40},
+    {x: ccx + w*0.25, y: ccy + h*0.33},
+  ]);
+
+  // ====================================================
+  //                          CODA (non tonda)
+  //        piccola punta triangolare verso destra
+  // ====================================================
+  ctx.beginPath();
+  ctx.moveTo(ccx + w*0.60*direction, ccy);
+  ctx.lineTo(ccx + w*0.40*direction, ccy - h*0.1);
+  ctx.lineTo(ccx + w*0.40*direction, ccy + h*0.1);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+
+  
   } else {
 	//fogliona da palude
-	ctx.fillStyle = "#6aa851";   // verde foglia galleggiante
+	ctx.fillStyle = COLORS.greenLeafLight;
   ctx.beginPath();
   ctx.ellipse(x + w/2 - 2, y + h/2 - 2, w / 2 - 2, h / 2 - 2, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -954,7 +1088,7 @@ function drawLeaf(c) {
   
   //taglio
   ctx.beginPath();
-  ctx.strokeStyle = "#3c6d2e";
+  ctx.strokeStyle = COLORS.greenLeafDark;
   ctx.lineWidth = w / 30;
   ctx.moveTo(ccx, ccy);
   ctx.lineTo(ccx + (c.speed > 0 ? w/3 : -w/3), ccy + h/4);
@@ -962,7 +1096,7 @@ function drawLeaf(c) {
 
   //bordo
   ctx.beginPath();
-  ctx.strokeStyle = "#3c6d2e";
+  ctx.strokeStyle = COLORS.greenLeafDark;
   ctx.lineWidth = w / 50;
   ctx.stroke();
 
@@ -1185,8 +1319,12 @@ function shadeColor(color, percent) {
 		  let flagSave = Math.round(y - offset) === 0 ? false : true;
 		  for (let c of row.woods) {
 		    c.x += c.speed;
+			if (c.speed>0 && c.x>canvas.width+tile) c.x=-tile;
+            if (c.speed<0 && c.x<-tile) c.x=canvas.width+tile;
+			
 		    const cy = c.y/tile;
 			if (frog.x < 0 || frog.x > 9) flagSave = false;
+			
 			else if (!godMode && Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(y - offset) === 0) {
               flagSave = true;
 			  frog.x = c.x/tile;
