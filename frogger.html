@@ -66,6 +66,7 @@
 	  trafficLightRedOff:'#400', trafficLightYellowOff:'#440', trafficLightGreenOff:'#040',
 	  policeBlueLightOn: '#00f', policeBlueLightOff: '#004',
 	  policeRedLightOn: '#f00', policeRedLightOff: '#400',
+	  shadow:'rgba(0,0,0,0.1)', shadowDark:'rgba(0,0,0,0.2)', shadowLight:'rgba(0,0,0,0.05)', shadowNone:'rgba(0,0,0,0)'
 	};
     const canvas = document.getElementById('game');
     const ctx = canvas.getContext('2d');
@@ -525,7 +526,7 @@ function drawRoadPair(y1, y2, row1) {
   //i cartelli vanno disegnati DOPO
   if (row1.cartType === 1) {
     signsToDraw.push({ type: "speed", x: row1.cart - 25, y: screenY1 + 2 });
-  } else if (row1.cartType === 2) {
+  } else if (row1.cartType === 2 || true) {
     signsToDraw.push({ type: "cross", x: row1.cart - 25, y: screenY1 + 2 });
   } else if (row1.cartType === 3) {
     signsToDraw.push({ type: "slow", x: row1.cart - 25, y: screenY1 + 2 });
@@ -544,16 +545,27 @@ function drawRoadPair(y1, y2, row1) {
 }
 
 
+//palo dei cartelli stradali
+function drawPole(x, y, w, h) {
+  //ombra
+  ctx.fillStyle = COLORS.shadowDark;
+  ctx.beginPath();
+  ctx.ellipse(x, y + h, w * 3, w, 0, 0, Math.PI * 2);
+  ctx.fill();
+  //palo
+  ctx.fillStyle = COLORS.grayPole;
+  ctx.fillRect(x, y, w, h);
+}
+
 
 function drawCrosswalkSign(x, y) {
   const signWidth = 20;
   const signHeight = 20;
   const poleHeight = 20;
 
-  // --- Palo ---
-  ctx.fillStyle = COLORS.grayPole;
-  ctx.fillRect(x + signWidth / 2 - 1, y + signHeight, 2, poleHeight);
-
+  //palo
+  drawPole(x + signWidth / 2 - 1, y + signHeight, 2, poleHeight);
+  
   // --- Fondo blu del cartello ---
   ctx.fillStyle = COLORS.blueCart;
   ctx.fillRect(x, y, signWidth, signHeight);
@@ -601,9 +613,8 @@ function drawDirectionSign(x, y) {
   const cx = x + radius;
   const cy = y + radius;
 
-  // --- Palo ---
-  ctx.fillStyle = COLORS.grayPole;
-  ctx.fillRect(cx - 2, cy + radius, 4, poleHeight);
+  //palo
+  drawPole(cx, y + radius + 2, 2, poleHeight);
 
   // --- Cerchio blu ---
   ctx.beginPath();
@@ -649,9 +660,8 @@ function drawNoOvertakingSign(x, y) {
   const cx = x + radius;
   const cy = y + radius;
 
-  // --- Palo ---
-  ctx.fillStyle = COLORS.grayPole;
-  ctx.fillRect(cx - 1, cy + radius, 2, poleHeight);
+  //palo
+  drawPole(cx -1, cy + radius, 2, poleHeight);
 
   // --- Cerchio bianco con bordo rosso ---
   ctx.beginPath();
@@ -712,9 +722,8 @@ function drawNoStoppingSign(x, y) {
   const cy = y + radius;
   const poleHeight = 22;      // Altezza del palo
 
-  // --- Palo ---
-  ctx.fillStyle = COLORS.grayPole;
-  ctx.fillRect(cx - 2, cy + radius, 4, poleHeight);
+  //palo
+  drawPole(cx -1, cy + radius, 2, poleHeight);
 
   // Cerchio blu
   ctx.beginPath();
@@ -747,9 +756,8 @@ function drawSpeedLimitSign(x, y, limit) {
   const radius = 10;       // Raggio del cartello (diametro 20)
   const poleHeight = 20;   // Altezza del palo
 
-  // --- Palo ---
-  ctx.fillStyle = COLORS.grayPole;
-  ctx.fillRect(x + radius - 1, y + radius * 2, 2, poleHeight);
+  //palo
+  drawPole(x + radius - 1, y + radius * 2, 2, poleHeight);
   
   // --- Cerchio bianco (sfondo del cartello) ---
   ctx.beginPath();
@@ -780,9 +788,8 @@ function drawSlowSign(x, y) {
   const signHeight = 20;
   const poleHeight = 20;
 
-  // --- Palo ---
-  ctx.fillStyle = COLORS.grayPole;
-  ctx.fillRect(x + signWidth / 2 - 1, y + signHeight, 2, poleHeight);
+  //palo
+  drawPole(x + signWidth / 2 - 1, y + signHeight, 2, poleHeight);
 
   // --- Triangolo giallo ---
   ctx.beginPath();
@@ -871,12 +878,11 @@ function drawTrafficLight(x, y, broken = false) {
   const lightRadius = 2;
   const seconds = new Date().getSeconds();
 
-  // --- Palo ---
-  ctx.fillStyle = COLORS.grayPole;
-  ctx.fillRect(x + lightWidth / 2 - 2, y + lightHeight, 4, poleHeight);
+  //palo
+  drawPole(x + lightWidth / 2 - 2, y + lightHeight, 4, poleHeight);
 
   // --- Corpo del semaforo ---
-  ctx.fillStyle = COLORS.grayPole;
+  ctx.fillStyle = COLORS.greenGrassDark;
   ctx.fillRect(x, y, lightWidth, lightHeight);
 
   // Rosso
@@ -950,7 +956,7 @@ function drawLeaf(c) {
   const ccy = y + h/2;
   
   //ombra intorno
-  ctx.fillStyle = "rgba(0,0,0,0.05)";
+  ctx.fillStyle = COLORS.shadow;
   ctx.beginPath();
   ctx.ellipse(x + w/2, y + h/2, w / 2, h / 2, 0, 0, Math.PI * 2);
   ctx.fill();
@@ -1135,7 +1141,7 @@ function drawCar(c) {
   var y = screenY + (tile - h)/2 - 5;
 
   // Ombra sotto auto
-  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillStyle = COLORS.shadowDark;
   ctx.beginPath();
   ctx.ellipse(x + w/2, y + h + 4, w*0.5, 4, 0, 0, Math.PI*2);
   ctx.fill();
@@ -1451,7 +1457,7 @@ function shadeColor(color, percent) {
     ctx.scale(tile / 100, tile / 100);	
 
     // Ombra sotto
-    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.fillStyle = COLORS.shadowDark;
     ctx.beginPath();
     ctx.ellipse(50, 88, 38, 6, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -1473,8 +1479,8 @@ function shadeColor(color, percent) {
 
     // Leggera ombra a sinistra
     const g = ctx.createLinearGradient(10,10,90,90);
-    g.addColorStop(0, 'rgba(0,0,0,0.06)');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
+    g.addColorStop(0, COLORS.shadowDark);
+    g.addColorStop(1, COLORS.shadowNone);
     ctx.fillStyle = g;
     ctx.fill();
 
@@ -1486,15 +1492,15 @@ function shadeColor(color, percent) {
 
     // Ombra pancia
     ctx.beginPath();
-    ctx.ellipse(50,55,20,6,0,0,Math.PI*2);
-    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    ctx.ellipse(50,55,20,12,0,0,Math.PI*2);
+    ctx.fillStyle = COLORS.shadowLight;
     ctx.fill();
 
     // Riflesso verde
     ctx.beginPath();
     ctx.moveTo(62,20);
     ctx.quadraticCurveTo(45,18,40,28);
-    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
     ctx.stroke();
