@@ -1307,10 +1307,16 @@ function shadeColor(color, percent) {
 
     // --- Update ---
     function update() {
-	  // Interpolazione morbida dell'offset
-	  ///if (Math.abs(offset - targetOffset) < 0.1) offset=targetOffset;
-	  //else offset += (targetOffset > 0 ? 0.1 : -0.1); 
-	  offset += (targetOffset - offset) * 0.2;
+	  //interpolazione morbida dell'offset
+	  //offset += (targetOffset - offset) * 0.2;//no va bene, spostamento infinito
+	  
+	  let step = (targetOffset - offset) * 0.2;
+      
+      if (Math.abs(step) < 0.05) step = 0.05 * Math.sign(step);//step minimo
+      
+	  if (Math.abs(targetOffset - offset) < Math.abs(step)) offset = targetOffset;//non superare il target
+      else offset += step;	  
+	  
 	  
 	  if (frog.x < 0) frog.x = 0;
 	  if (frog.x > 9) frog.x = 9;
@@ -1420,7 +1426,7 @@ function shadeColor(color, percent) {
       ctx.font = '16px sans-serif';
 	  ctx.textAlign = 'left';
 	  ctx.fillText('TargetOffset: ' + targetOffset, 10, 20);
-      ctx.fillText('Offset: ' + offset + targetOffset, 10, 30);
+      ctx.fillText('Offset: ' + offset, 10, 30);
       ctx.fillText('Frog: x=' + frog.x, 280, 20);
 	  ctx.fillText('Frog: y=' + frog.y, 280, 30);
     }
