@@ -39,6 +39,9 @@
   <audio id="flashSound" preload="auto">
 	<source src="./flash.mp3" type="audio/mpeg">
   </audio>
+  <audio id="falconSound" preload="auto">
+	<source src="./falcon.mp3" type="audio/mpeg">
+  </audio>
   <script>
   (() => {
     const COLORS = {
@@ -83,7 +86,7 @@
 	let level = 0;
     
 	let godMode = false;//true;
-	let isMute = true;
+	let isMute = false;
 	
     // Utilità
     const randomInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
@@ -130,9 +133,8 @@
       }
 	  console.log('grass='+countGrass+' road='+countRoad+' double='+countDouble+ ' river='+countRiver);
 	  
-      // Probabilità di generare strada doppia
+      //strada doppia
       const makeDoubleRoad = y !== 0 && (countDouble<3 || countGrass>countTot/2);//Math.random() < 0.25 && (countGrass - countRoad) > 1;
-
       if (makeDoubleRoad) {
         // Evita di creare doppia se la successiva esiste già
         if (!segments.has(y + 1)) {
@@ -178,6 +180,7 @@
         else console.log('collisione');
 	  }   
       
+	  //strada singola
       const makeRoad = y !== 0 && countGrass>countTot/2;//Math.random() < 0.7 && (countGrass - countRoad) > 0;
       if (makeRoad) {
         const dir = Math.random() < 0.5 ? 1 : -1;
@@ -218,7 +221,8 @@
         return;
       }
       
-	  const makeRiver = y !== 0 && countRiver == 0;
+	  //fiume
+	  const makeRiver = y !== 0 && countRiver ==0 || Math.random() < 0.1;
 	  if (makeRiver) {
 	    const dir = Math.random() < 0.5 ? 1 : -1;
         const speed = dir * 0.2;
@@ -244,6 +248,17 @@
           hasLake = true;//tipo strisce
         }
 	  const row = { type:'grass', cars:[], hasLake: hasLake, lake: lake };
+	  if (Math.random()<0.1) {
+	    //const dir = Math.random() < 0.5 ? 1 : -1;
+        const speed = (2 + Math.random() * 3);
+	    row.cars.push({
+            x: 0,
+            y: y*tile,
+            speed: speed, 
+            color: randomCarColor(),
+			type: "falcon"
+          });
+	  }
       segments.set(y,row);
       console.log('generate '+y+' frog y'+frog.y+ ' ->> grass', row);
     }
@@ -425,11 +440,25 @@
 		ctx.fillRect(cx-15+seconds, cy, 20, 1);
 		ctx.fillRect(cx-12+seconds, cy+2, 18, 1);
 		ctx.fillRect(cx-8+seconds, cy+4, 8, 1);
-	  }
-		
-		
-        
+	  } 
   }
+  
+  
+  
+function roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+}
+
 
     
   //strada
@@ -452,6 +481,7 @@ function drawSingleRoad(y, row) {
   ctx.lineTo(canvas.width, screenY + tile - 2);
   ctx.stroke();
   ctx.setLineDash([]);
+  ctx.lineWidth = 1;
   
   //zebrone!
   if (row.zebra !== 0) {
@@ -652,6 +682,7 @@ function drawDirectionSign(x, y) {
 
   ctx.closePath();
   ctx.fill();
+  ctx.lineWidth = 1;
 }
 
 function drawNoOvertakingSign(x, y) {
@@ -780,6 +811,7 @@ function drawSpeedLimitSign(x, y, limit) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(limit, x + radius, y+radius);
+  ctx.lineWidth = 1;
 }
 
 
@@ -998,6 +1030,7 @@ function drawLeaf(c) {
 	ctx.strokeStyle = COLORS.daisyCenterBorder;
 	ctx.lineWidth = w * 0.015;
 	ctx.stroke();
+	ctx.lineWidth = 1;
   
   } else if (c.type === "turtle"){
   //guscio ovale
@@ -1117,6 +1150,7 @@ function drawLeaf(c) {
     ctx.strokeStyle = COLORS.greenLeafDark;
     ctx.lineWidth = w / 50;
     ctx.stroke();
+	ctx.lineWidth = 1;
   	}
 
   ctx.restore();
@@ -1124,6 +1158,102 @@ function drawLeaf(c) {
 
 
 
+//falco
+function drawFalcon(c) {
+  const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
+  if (screenY < -tile || screenY > canvas.height + tile) return;
+  const seconds = new Date().getSeconds();
+
+  var w = tile * 0.9;
+  var h = tile * 0.6;
+  var x = c.x + (tile - w)/2;
+  var y = screenY + (tile - h)/2 - 5;
+
+  // Ombra sotto falco
+  ctx.fillStyle = COLORS.shadowDark;
+  ctx.beginPath();
+  ctx.ellipse(x + w/2, y + h + 4, w*0.5, 4, 0, 0, Math.PI*2);
+  ctx.fill();
+  
+    // Gradiente corpo
+  const grad = ctx.createLinearGradient(x, y, x + w, y);
+  grad.addColorStop(0, COLORS.black);
+  grad.addColorStop(1, COLORS.grayTarmacLight);
+
+  ctx.fillStyle = grad;
+  ctx.strokeStyle = COLORS.grayTarmacDark;
+  ctx.lineWidth = 1;
+
+  //corpo
+  ctx.beginPath();
+  ctx.moveTo(x + w*0.10, y + h*0.50);     // punta coda stretta
+  ctx.lineTo(x + w*0.22, y + h*0.35);     // inizio salita corpo
+  ctx.lineTo(x + w*0.45, y + h*0.28);     // dorso
+  ctx.lineTo(x + w*0.70, y + h*0.40);     // collo
+  ctx.lineTo(x + w*0.88, y + h*0.48);     // testa (piccola)
+  ctx.lineTo(x + w*0.70, y + h*0.60);     // collo giù
+  ctx.lineTo(x + w*0.45, y + h*0.72);     // ventre stretto
+  ctx.lineTo(x + w*0.22, y + h*0.65);     // coda parte bassa
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // Becco
+  ctx.fillStyle = COLORS.yellowCart;
+  ctx.beginPath();
+  ctx.moveTo(x + w*0.90, y + h*0.48);
+  ctx.lineTo(x + w*0.98, y + h*0.46);
+  ctx.lineTo(x + w*0.90, y + h*0.52);
+  ctx.fill();
+
+  // Ala superiore
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.moveTo(x + w*0.33, y + h*0.30);
+  ctx.quadraticCurveTo(
+    x + w*0.02, y - h*0.55,
+    x + w*0.50, y + h*0.25
+  );
+  ctx.quadraticCurveTo(
+    x + w*0.40, y + h*0.33,
+    x + w*0.33, y + h*0.30
+  );
+  ctx.fill();
+
+  // Ala inferiore
+  ctx.beginPath();
+  ctx.moveTo(x + w*0.33, y + h*0.70);
+  ctx.quadraticCurveTo(
+    x + w*0.02, y + h*1.55,
+    x + w*0.50, y + h*0.75
+  );
+  ctx.quadraticCurveTo(
+    x + w*0.40, y + h*0.66,
+    x + w*0.33, y + h*0.70
+  );
+  ctx.fill();
+  
+  let sameRow = Math.round(c.y/tile - offset) === 0;
+  let collision = !sameRow ? false :
+				c.speed > 0 ? (frog.x*tile - c.x) < tile * 3 && (frog.x*tile - c.x) > -1 : 
+				(c.x - frog.x*tile) < tile * 3 && (c.x - frog.x*tile) > -1;
+  let falconScream = collision && Math.random() < 0.1;
+  
+  ctx.fillStyle = COLORS.black;
+  if(falconScream) {
+    ctx.fillStyle = COLORS.redCart;
+    playSound('falconSound', false);//
+  }
+  ctx.beginPath();
+  ctx.arc(x + w*0.8, y + h*0.6, 1, 0, Math.PI*2);
+  ctx.closePath();
+  ctx.fill();
+  
+  ctx.beginPath();
+  ctx.arc(x + w*0.8, y + h*0.6 - 5, 1, 0, Math.PI*2);
+  ctx.closePath();
+  ctx.fill();
+}
 
 
 
@@ -1324,14 +1454,25 @@ function shadeColor(color, percent) {
       else offset += step;	  
 	  
 	  
-	  if (frog.x < 0) frog.x = 0;
-	  if (frog.x > 9) frog.x = 9;
+	  if (frog.x <= 0) frog.x = 0;
+	  if (frog.x >= 9) frog.x = 9;
 
       for (let [y,row] of segments) {
         //erbetta
 		if (row.type === "grass") {
 		  if (row.hasLake) {
 		    if (!godMode && Math.abs(row.lake/tile - frog.x) < 0.5 && Math.round(y - offset) === 0) {
+              alert('💀 Game Over!');
+              isGameOver = true;
+            }
+		  }
+		  //collisioni con falco
+		  for (let f of row.cars) {
+		    f.x += f.speed;
+            if (f.speed>0 && f.x>canvas.width+tile) f.x=-tile;
+            if (f.speed<0 && f.x<-tile) f.x=canvas.width+tile;
+            const fy = f.y/tile;
+			if (!godMode && Math.abs(f.x/tile - frog.x) < 0.5 && Math.round(fy - offset) === 0) {
               alert('💀 Game Over!');
               isGameOver = true;
             }
@@ -1386,16 +1527,30 @@ function shadeColor(color, percent) {
 	  
 	    const row = segments.get(y);
         
+		//erba
 		if (row.type === 'grass') {
           drawGrass(y, row);
-        } else if (row.type === 'river') {
+		  for (let f of row.cars) drawFalcon(f);
+		  continue;
+        } 
+		
+		//fiume
+		if (row.type === 'river') {
 		  drawRiver(y, row);
 		  for (let leaf of row.woods) drawLeaf(leaf);
-		} else if (row.type === 'road') {
-          if (row.lane === 0) {
+		  continue;
+		}
+		
+		//strada
+		if (row.type === 'road') {
+          //singola
+		  if (row.lane === 0) {
             drawSingleRoad(y, row);
             for (let car of row.cars) drawCar(car);
-          } else if (row.lane === 1) {
+			continue;
+          } 
+		  //1 di 2
+		  if (row.lane === 1) {
             // Disegna la doppia carreggiata solo una volta
             drawRoadPair(y, y + 1, row);
             for (let car of row.cars) drawCar(car);
@@ -1405,7 +1560,11 @@ function shadeColor(color, percent) {
             if (lowerRow && lowerRow.cars) {
               for (let car of lowerRow.cars) drawCar(car);
             }
-          } else if (row.lane === 2) {
+			continue;
+          } 
+		  
+		  //2 di 2
+		  if (row.lane === 2) {
             // Niente strada, solo auto (già disegnata sopra)
             continue;
           }
@@ -1590,6 +1749,7 @@ function shadeColor(color, percent) {
     ctx.moveTo(36,36);
     ctx.quadraticCurveTo(50,43,64,36);
     ctx.stroke();
+	ctx.lineWidth = 1;
 
     ctx.restore();
   }
@@ -1597,23 +1757,20 @@ function shadeColor(color, percent) {
   
   
   
-  function playSound(id) {
+  function playSound(id, force = true) {
 	  if (isMute) return;
 	  const audio = document.getElementById(id);
-	  if (audio) {
-		audio.currentTime = 0;
-		audio.play().catch((e) => {
-		  console.warn("Errore riproduzione audio:", e);
-		});
-	  }
+	  if (!audio) return;//id non valido
+	  if (!audio.paused && force) return;//gia in riproduzione
+	  
+	  //ok, riproducilo dall'inizio
+	  audio.currentTime = 0;
+      audio.play().catch((e) => {
+	  console.warn("Errore riproduzione audio:", e);
+	  });
 	}
 
   })();
   </script>
 </body>
 </html>
-
-
-
-
-    
