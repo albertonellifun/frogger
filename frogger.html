@@ -1342,26 +1342,27 @@ function drawFalcon(c) {
 //casetta
 function drawApple2House(x, y) {
   
-  ctx.fillStyle = COLORS.black;
-  ctx.strokeStyle = COLORS.white;
+  ctx.fillStyle = !bw ? COLORS.grayTarmacLight : COLORS.black;
+  ctx.strokeStyle = !bw ? COLORS.black : COLORS.white;
   
   //corpo casa
   ctx.fillRect(x + 4, y + 6, 36, 26);
   ctx.strokeRect(x + 4, y + 6, 36, 26);
 
   //porta
+  ctx.fillStyle = COLORS.black;
   ctx.fillRect(x + 10, y + 8, 18, 24);
   ctx.strokeRect(x + 10, y + 8, 18, 24);
   
   //finestra
-  ctx.fillStyle = COLORS.white;
+  ctx.fillStyle = !bw ? COLORS.yellowCart : COLORS.white;
   ctx.fillRect(x + 30, y + 10, 8, 16);
-  ctx.fillStyle = COLORS.black;
+  ctx.fillStyle = !bw ? COLORS.grayTarmacLight : COLORS.black;
   ctx.fillRect(x + 33, y + 10, 2, 16);
   ctx.fillRect(x + 30, y + 18, 8, 2);
   
   //tetto
-  ctx.strokeStyle = COLORS.white;
+  ctx.strokeStyle = !bw ? COLORS.black : COLORS.white;
   ctx.fillStyle = COLORS.redCart;
   ctx.beginPath();
   ctx.moveTo(x+4, y+6);
@@ -1387,7 +1388,7 @@ function drawApple2House(x, y) {
 //alberello
 function drawApple2Tree(x, y, type = 2) {
   //tronco
-  ctx.fillStyle = COLORS.white;
+  ctx.fillStyle = !bw ? COLORS.brownTutleDark : COLORS.white;
   ctx.fillRect(x + 18, y + 20, 5, 12); // tronco
   ctx.fillRect(x + 15, y + 32, 2, 4);  // radice sinistra
   ctx.fillRect(x + 15, y + 32, 4, 2);  // radice sinistra
@@ -1430,7 +1431,7 @@ function drawApple2Tree(x, y, type = 2) {
   ctx.closePath();
 
   ctx.fillStyle = COLORS.greenGrassDark;
-  ctx.strokeStyle = COLORS.white;
+  ctx.strokeStyle = !bw ? COLORS.black : COLORS.white;
   ctx.fill();
   ctx.stroke();
   
@@ -1794,7 +1795,7 @@ function drawApple2Wood(c) {
   const y = screenY;
   const spostamento = 8;
 
-  ctx.fillStyle = COLORS.white;
+  ctx.fillStyle = !bw ? COLORS.brownTutleDark : COLORS.white;
   ctx.strokeStyle = COLORS.black;
   ctx.beginPath();
   ctx.moveTo(x+2, y + spostamento);
@@ -2174,7 +2175,7 @@ function shadeColor(color, percent) {
     const cx = frog.x * tile + tile / 2;
 	const cy = canvas.height / 2 + tile / 2;
 
-    ctx.fillStyle = COLORS.white;
+    ctx.fillStyle = !bw ? COLORS.greenGrassLight : COLORS.white;
 	ctx.strokeStyle = COLORS.black;
 	
 	//codina
