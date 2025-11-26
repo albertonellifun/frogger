@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Frogger Infinite Bidirezionale</title>
+  <title>Frogger Infinite Bidirezionale / Apple ][ Cricketeer Clone</title>
   <style>
     body {
       background: #111;
@@ -20,9 +20,28 @@
 	  max-height: 100%;
       max-width: 100%;
     }
+	
+	#scanlines-overlay {
+	  display:none;
+	  position: absolute;
+	  top: 0;
+	  left: 0;
+	  right: 0;
+	  bottom: 0;
+	  pointer-events: none;
+	  background: repeating-linear-gradient(
+		transparent,
+		transparent 0px,
+		rgba(0, 0, 0, 0.5) 1px,
+		transparent 2px
+	  );
+	  background-size: 100% 4px;
+	  opacity: 1;
+	}
   </style>
 </head>
 <body>
+  <div id="scanlines-overlay"></div>
   <canvas id="game" width="400" height="400"></canvas>
   <audio id="cracraSound" preload="auto">
 	<source src="./cracra.mp3" type="audio/mpeg">
@@ -41,6 +60,12 @@
   </audio>
   <audio id="falconSound" preload="auto">
 	<source src="./falcon.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="cricketeerSound" preload="auto">
+	<source src="./cricketeer.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="cricketeerTrafficSound" preload="auto">
+	<source src="./cricketeer-traffic.mp3" type="audio/mpeg">
   </audio>
   <script>
   (() => {
@@ -85,8 +110,13 @@
 	let targetOffset = 0;   // offset desiderato verso cui ci muoviamo
 	let level = 0;
     
-	let godMode = false;//true;
+	let godMode = false;
 	let isMute = false;
+	let apple2Mode = false;
+	let scanLinesEnabled = false;
+	
+	let isGameOver = false;
+	let signsToDraw = [];//cartelli vanno disegnati DOPO
 	
     // Utilità
     const randomInt = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
@@ -115,6 +145,7 @@
 
     const randomCarColor = () => carColors[randomInt(0, carColors.length-1)];
 
+
     // --- Generazione righe ---
     function generateRow(y) {
       if (segments.has(y)) return; // già esistente
@@ -132,6 +163,9 @@
 		countTot++;
       }
 	  console.log('grass='+countGrass+' road='+countRoad+' double='+countDouble+ ' river='+countRiver);
+	  
+	  let apple2CarType1 = y%3 === 0 ? "ferrari" : y%3 === 1 ? "elegant" : "tir";
+	  let apple2CarType2 = y%3 === 1 ? "ferrari" : y%3 === 2 ? "elegant" : "tir";
 	  
       //strada doppia
       const makeDoubleRoad = y !== 0 && (countDouble<3 || countGrass>countTot/2);//Math.random() < 0.25 && (countGrass - countRoad) > 1;
@@ -154,7 +188,7 @@
               y: y * tile,
               speed: speedA,
               color: randomCarColor(),
-			  type: Math.random() < 0.1 ? "police" : "car"
+			  type: apple2Mode ? apple2CarType1 : Math.random() < 0.1 ? "police" : "car"
             };
             rowA.cars.push(c);
           }
@@ -168,7 +202,7 @@
               y: (y+1) * tile,
               speed: speedB,
               color: randomCarColor(),
-			  type: "car"
+			  type: apple2Mode ? apple2CarType2 : "car"
             };
             rowB.cars.push(c2);
           }
@@ -209,11 +243,11 @@
 		
         for (let j=0;j<3;j++){
           row.cars.push({
-            x: (j * 3 + randomInt(0,2)) * tile,
+            x: (j * 3 + randomInt(0,1)) * tile,
             y: y*tile,
             speed: speed, 
             color: randomCarColor(),
-			type: "car"
+			type: apple2Mode ? apple2CarType1 : "car"
           });
         }
         segments.set(y,row);
@@ -243,8 +277,12 @@
       //erba
 	  let hasLake = false;
       let lake = 0;
-      if (Math.random() < 0.1) {
-          lake = (1 + ((Math.random() * 10) | 0 )) * tile;//posizione
+	  //evita laghi attaccati
+	  let menoUno = segments.get(y-1) && segments.get(y-1).hasLake;
+	  let piuUno = segments.get(y+1) && segments.get(y+1).hasLake;
+	  
+      if (Math.random() < 0.1 && !menoUno && !piuUno) {
+	      lake = apple2Mode ? 0 : (1 + ((Math.random() * 10) | 0 )) * tile;//posizione
           hasLake = true;//tipo strisce
         }
 	  const row = { type:'grass', cars:[], hasLake: hasLake, lake: lake };
@@ -271,24 +309,44 @@
     
 	//controlli tastiera
     window.addEventListener('keydown', e=>{
-      if (e.keyCode===37 && frog.x>0) { frog.x--; playSound('cracraSound'); }
-      if (e.keyCode===39 && frog.x<cols-1) { frog.x++; playSound('cracraSound'); }
-	  if (e.keyCode===38) { // su
+      if (e.keyCode === 37 && frog.x>0) { frog.x--; playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound'); }
+      if (e.keyCode === 39 && frog.x<cols-1) { frog.x++; playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound'); }
+	  if (e.keyCode === 38) { // su
         targetOffset++;
 		generateRow(Math.floor(targetOffset + visibleRows/2));
 		//offset++;
         //generateRow(offset + visibleRows/2);
         pruneRows();
-		playSound('cracraSound');
+		playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
       }
-      if (e.keyCode===40) { // giù
+	  if (e.keyCode === 40) { // giù
         targetOffset--;
 		generateRow(Math.floor(targetOffset - visibleRows/2));
 		//offset--;
         //generateRow(offset - visibleRows/2);
         pruneRows();
-		playSound('cracraSound');
+		playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
       }
+	  
+	  if (e.keyCode === 77) {
+	    //77=M
+		isMute = !isMute;
+	  }
+	  
+	  if (e.keyCode === 71) {
+	    //71=G
+		godMode = !godMode;
+	  }
+	  
+	  if (e.keyCode === 65) {
+	    //65=A
+		apple2Mode = !apple2Mode;
+	  }
+	  
+	  if (e.keyCode === 83) {
+	    //83=S
+		changeScanLines();
+	  }
     });
 
     // --- Rimuove righe vecchie per non accumulare ---
@@ -359,6 +417,10 @@
     ctx.fill();
 }
   
+  
+  
+  
+  
   //erbetta
   function drawGrass(y, row) {
       var screenY = canvas.height/2 - (y - offset) * tile;
@@ -372,8 +434,10 @@
 	  
 	  // ---- Laghetto
 	  if (row.hasLake) {
-		const lakeX = row.lake;
+	    const lakeX = row.lake;
 		const lakeY = screenY + tile * 0.10;
+		
+		if(apple2Mode) return drawApple2House(lakeX, lakeY);
 
 		const rx = tile * 0.5;
 		const ry = tile * 0.4;
@@ -463,6 +527,8 @@ function roundRect(x, y, w, h, r) {
     
   //strada
 function drawSingleRoad(y, row) {
+  if(apple2Mode) playSound('cricketeerTrafficSound', true);
+
   const screenY = canvas.height/2 - (y - offset)*tile;
 
   // Asfalto
@@ -473,14 +539,12 @@ function drawSingleRoad(y, row) {
   ctx.strokeStyle = row.workInProgress ? COLORS.yellowCart : COLORS.white;
   ctx.fillStyle = row.workInProgress ? COLORS.yellowCart : COLORS.white;
   ctx.lineWidth = 2;
-  ctx.setLineDash([]);//y % 4 === 0 ? [12, 8] : []);
   ctx.beginPath();
   ctx.moveTo(0, screenY + 2);
   ctx.lineTo(canvas.width, screenY + 2);
   ctx.moveTo(0, screenY + tile - 2);
   ctx.lineTo(canvas.width, screenY + tile - 2);
   ctx.stroke();
-  ctx.setLineDash([]);
   ctx.lineWidth = 1;
   
   //zebrone!
@@ -523,6 +587,9 @@ function drawSingleRoad(y, row) {
 
 //autostrada
 function drawRoadPair(y1, y2, row1) {
+
+  if(apple2Mode) playSound('cricketeerTrafficSound', true);
+
   const screenY1 = canvas.height/2 - (y1 - offset) * tile;
   const screenY2 = canvas.height/2 - (y2 - offset) * tile;
   var top = Math.min(screenY1, screenY2);
@@ -536,16 +603,19 @@ function drawRoadPair(y1, y2, row1) {
   ctx.strokeStyle = row1.workInProgress ? COLORS.yellowCart : COLORS.white;
   ctx.fillStyle = row1.workInProgress ? COLORS.yellowCart : COLORS.white;
   ctx.lineWidth = 2;
-  ctx.setLineDash([]);
   ctx.beginPath();
   ctx.moveTo(0, top + 2);
   ctx.lineTo(canvas.width, top + 2);
   ctx.moveTo(0, top + height - 2);
   ctx.lineTo(canvas.width, top + height - 2);
   ctx.stroke();
+  ctx.lineWidth = 1;
 
   // Linea tratteggiata centrale
+  ctx.strokeStyle = row1.workInProgress ? COLORS.yellowCart : COLORS.white;
+  ctx.fillStyle = row1.workInProgress ? COLORS.yellowCart : COLORS.white;
   ctx.setLineDash([12, 8]);
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, top + tile);
   ctx.lineTo(canvas.width, top + tile);
@@ -978,6 +1048,8 @@ function drawLeaf(c) {
   const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
   if (screenY < -tile || screenY > canvas.height + tile) return;
 
+  if (apple2Mode) return drawApple2Wood(c);
+  
   const w = tile * 1.2;
   const h = tile * 0.7;
   //angolo alto sinistra
@@ -1255,12 +1327,241 @@ function drawFalcon(c) {
   ctx.fill();
 }
 
+//casetta
+function drawApple2House(x, y) {
+  
+  ctx.fillStyle = COLORS.black;
+  ctx.strokeStyle = COLORS.white;
+  
+  //corpo casa
+  ctx.fillRect(x + 4, y + 6, 36, 26);
+  ctx.strokeRect(x + 4, y + 6, 36, 26);
+
+  //porta
+  ctx.fillRect(x + 10, y + 8, 18, 24);
+  ctx.strokeRect(x + 10, y + 8, 18, 24);
+  
+  //finestra
+  ctx.fillStyle = COLORS.white;
+  ctx.fillRect(x + 30, y + 10, 8, 16);
+  ctx.fillStyle = COLORS.black;
+  ctx.fillRect(x + 33, y + 10, 2, 16);
+  ctx.fillRect(x + 30, y + 18, 8, 2);
+  
+  //tetto
+  ctx.strokeStyle = COLORS.white;
+  ctx.fillStyle = COLORS.redCart;
+  ctx.beginPath();
+  ctx.moveTo(x+4, y+6);
+  ctx.lineTo(x+12, y-2);
+  ctx.lineTo(x+32, y-2);
+  ctx.lineTo(x+40, y+6);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  
+  //base erbetta
+  ctx.fillStyle = COLORS.greenGrassDark;
+  ctx.fillRect(x-2,y+34,44,6); 
+  
+  if (x < canvas.width) {
+    drawApple2Tree(x+40, y, 1);
+    drawApple2Tree(x+80, y, 2);
+	drawApple2House(x+120, y);
+  }
+  
+}
+
+//alberello
+function drawApple2Tree(x, y, type = 2) {
+  //tronco
+  ctx.fillStyle = COLORS.white;
+  ctx.fillRect(x + 18, y + 20, 5, 12); // tronco
+  ctx.fillRect(x + 15, y + 32, 2, 4);  // radice sinistra
+  ctx.fillRect(x + 15, y + 32, 4, 2);  // radice sinistra
+  ctx.fillRect(x + 18, y + 30, 2, 6);  // radice centro
+  ctx.fillRect(x + 22, y + 30, 2, 6);  // radice destra
+
+  //chioma
+  const size = 32; // larghezza della chioma
+  const half = size / 2;
+  
+  //vertici
+  let points = [];
+  if(type === 1) points = [
+    [x + 4 + half - 6, y - 2],           // alto sinistra
+    [x + 4 + half + 6, y - 3],           // alto destra
+    [x + 4 + size, y + 4],           // destra alto
+    [x + 4 + size, y + 18],          // destra basso
+    [x + 4 + half + 6, y + 20],      // basso destra
+    [x + 4 + half - 6, y + 19],      // basso sinistra
+    [x + 4, y + 12],                 // sinistra basso
+    [x + 4, y + 4],                  // sinistra alto
+  ];
+  if(type === 2) points = [
+    [x + 4 + half - 7, y - 3],           // alto sinistra
+    [x + 4 + half + 6, y - 3],           // alto destra
+    [x + 4 + size, y + 4],           // destra alto
+    [x + 4 + size - 2, y + 23],          // destra basso
+    [x + 4 + half + 5, y + 20],      // basso destra
+    [x + 4 + half - 3, y + 19],      // basso sinistra
+    [x + 8, y + 24],                 // sinistra basso
+    [x + 6, y + 14],                  // sinistra alto
+  ];
+
+  //disegno
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(points[i][0], points[i][1]);
+  }
+  ctx.closePath();
+
+  ctx.fillStyle = COLORS.greenGrassDark;
+  ctx.strokeStyle = COLORS.white;
+  ctx.fill();
+  ctx.stroke();
+  
+  //base erbetta
+  ctx.fillStyle = COLORS.greenGrassDark;
+  ctx.fillRect(x-2,y+34,44,6); 
+}
+
+//tir
+function drawCarApple2Tir(c) {
+  const screenY = canvas.height / 2 - (c.y / tile - offset) * tile;
+  if (screenY < -tile || screenY > canvas.height + tile) return;
+
+  const w = tile * 0.9;
+  const h = tile * 0.6;
+  const x = c.x + (tile - w) / 2;
+  const y = screenY + (tile - h) / 2 - 5;
+
+  //ctx.fillStyle=COLORS.redCart;
+  //ctx.fillRect(x,y,tile,tile);
+
+  const carWidth = 60;
+  const carHeight = 26;
+  const spostamento = 4;
+
+  if(c.speed > 0) {
+    //corpo rettangolare bianco
+    ctx.fillStyle = COLORS.white;
+    ctx.strokeStyle = COLORS.black;
+    ctx.fillRect(x-20, y + spostamento, carWidth, carHeight);
+    ctx.strokeRect(x-20, y + spostamento, carWidth, carHeight);
+	//bordo cabina
+	ctx.fillStyle = COLORS.black;
+	ctx.fillRect(x + tile - 10, y+spostamento, 2, 4);
+	ctx.fillRect(x + tile - 10, y+spostamento+carHeight, 2, -4);
+	//tettuccio
+	ctx.beginPath();
+	ctx.arc(x + tile - 16, y + carHeight / 2 + spostamento, carHeight/2, Math.PI * 1.75, Math.PI * 0.25, false);
+    ctx.stroke();
+	//puntini
+	for (let i=1;i<10;i++) {
+		ctx.fillRect(x + tile - 10 - i * 5, y + spostamento + 2, 2, 2);
+		ctx.fillRect(x + tile - 10 - i * 5, y + spostamento + carHeight - 4, 2, 2);
+	}
+	
+  } else {
+    //corpo rettangolare bianco
+	ctx.fillStyle = COLORS.white;
+    ctx.strokeStyle = COLORS.black;
+    ctx.fillRect(x, y + spostamento, carWidth, carHeight);
+    ctx.strokeRect(x, y + spostamento, carWidth, carHeight);
+	//bordo cabina
+	ctx.fillStyle = COLORS.black;
+	ctx.fillRect(x + 10, y+spostamento, 2, 4);
+	ctx.fillRect(x + 10, y+spostamento+carHeight, 2, -4);
+	//tettuccio
+	ctx.beginPath();
+    ctx.arc(x + 16, y + carHeight / 2 + spostamento, carHeight/2, Math.PI * 0.75, Math.PI * 1.25, false);
+    ctx.stroke();
+	//puntini
+	for (let i=1;i<10;i++) {
+		ctx.fillRect(x + 10 + i * 5, y + spostamento + 2, 2, 2);
+		ctx.fillRect(x + 10 + i * 5, y + spostamento + carHeight - 4, 2, 2);
+	}
+  }
+}
+
+//ehi, tu, elegantone...
+function drawCarApple2Elegant(c) {
+  const screenY = canvas.height / 2 - (c.y / tile - offset) * tile;
+  if (screenY < -tile || screenY > canvas.height + tile) return;
+
+  const w = tile * 0.9;
+  const h = tile * 0.6;
+  const x = c.x + (tile - w) / 2;
+  const y = screenY + (tile - h) / 2 - 5;
+
+  //ctx.fillStyle=COLORS.redCart;
+  //ctx.fillRect(x,y,tile,tile);
 
 
+  const carWidth = 40;
+  const carHeight = 20;
+  const spostamento = 6;
 
-    
-//disegna le automobili
-function drawCar(c) {
+  // Corpo rettangolare bianco
+  ctx.fillStyle = COLORS.white;
+  ctx.strokeStyle = COLORS.black;
+  ctx.fillRect(x, y + 6, carWidth, carHeight);
+  ctx.strokeRect(x, y + 6, carWidth, carHeight);
+
+  if(c.speed > 0) {
+    //cofano ondulato
+    ctx.beginPath();
+    ctx.arc(x + carWidth - 4, y + carHeight / 2 + spostamento, 6, Math.PI * 1.5, Math.PI * 0.5, false);
+    ctx.fill();
+    ctx.stroke();
+	
+	ctx.fillStyle = COLORS.black;//vetro
+    ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+    //parabrezza
+    ctx.beginPath();
+    ctx.arc(x + 2 * carWidth / 3 - 4, y + carHeight / 2 + spostamento, 8, Math.PI * 1.5, Math.PI * 0.5, false);// arco esterno (da alto a basso)
+    ctx.arc(x + 2 * carWidth / 3 - 4, y + carHeight / 2 + spostamento, 6, Math.PI * 0.5, Math.PI * 1.5, true);// arco interno (da basso a alto, inverso)
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+	//lunotto
+	ctx.beginPath();
+    ctx.arc(x + 2 * carWidth / 5 - 4, y + carHeight / 2 + spostamento, 8, Math.PI * 0.5, Math.PI * 1.5, false);// arco esterno (da alto a basso)
+    ctx.arc(x + 2 * carWidth / 5 - 4, y + carHeight / 2 + spostamento, 6, Math.PI * 1.5, Math.PI * 0.5, true);// arco interno (da basso a alto, inverso)
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else {
+    //cofano dietro ondulato
+    ctx.beginPath();
+    ctx.arc(x + 4, y + carHeight / 2 + spostamento, 6, Math.PI * 0.5, Math.PI * 1.5, false);
+    ctx.fill();
+    ctx.stroke();
+	
+	ctx.fillStyle = COLORS.black;//vetro
+    ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+    //parabrezza
+    ctx.beginPath();
+    ctx.arc(x + 2 * carWidth / 5 + 2, y + carHeight / 2 + spostamento, 8, Math.PI * 0.5, Math.PI * 1.5, false);// arco esterno (da alto a basso)
+    ctx.arc(x + 2 * carWidth / 5 + 2, y + carHeight / 2 + spostamento, 6, Math.PI * 1.5, Math.PI * 0.5, true);// arco interno (da basso a alto, inverso)
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+	//lunotto
+	ctx.beginPath();
+    ctx.arc(x + 2 * carWidth / 3 + 2, y + carHeight / 2 + spostamento, 8, Math.PI * 1.5, Math.PI * 0.5, false);// arco esterno (da alto a basso)
+    ctx.arc(x + 2 * carWidth / 3 + 2, y + carHeight / 2 + spostamento, 6, Math.PI * 0.5, Math.PI * 1.5, true);// arco interno (da basso a alto, inverso)
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+	
+  }
+}
+
+//ferrari
+function drawCarApple2Ferrari(c) {
   const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
   if (screenY < -tile || screenY > canvas.height + tile) return;
   const seconds = new Date().getSeconds();
@@ -1269,7 +1570,140 @@ function drawCar(c) {
   var h = tile * 0.6;
   var x = c.x + (tile - w)/2;
   var y = screenY + (tile - h)/2 - 5;
+  
+  //ctx.fillStyle=COLORS.redCart;
+  //ctx.fillRect(x,y,tile,tile);
 
+
+  //dimensioni
+  const wheelWidth = 12;
+  const wheelHeight = 6;
+  const carWidth = 20;
+  const carHeight = 12;
+  const spostamento = 4;
+
+  if(c.speed > 0) {
+    //ruote dietro
+    ctx.fillStyle = COLORS.black;
+    ctx.strokeStyle = COLORS.white;
+    ctx.fillRect(x, y + spostamento, wheelWidth, wheelHeight);//alto
+    ctx.strokeRect(x, y + spostamento, wheelWidth, wheelHeight);
+    ctx.fillRect(x, y + spostamento + carHeight + wheelHeight, wheelWidth, wheelHeight);//basso
+    ctx.strokeRect(x, y + spostamento + carHeight + wheelHeight, wheelWidth, wheelHeight);
+    ctx.fillStyle = COLORS.white;
+    ctx.fillRect(x + wheelWidth/2, y + spostamento + wheelHeight, 2, carHeight);//asse
+    
+    //ruote avanti appena piu strette
+    ctx.fillStyle = COLORS.black;
+    ctx.strokeStyle = COLORS.white;
+    ctx.fillRect(x + carWidth, y + spostamento + 1, wheelWidth, wheelHeight);//alto
+    ctx.strokeRect(x + carWidth, y + spostamento + 1, wheelWidth, wheelHeight);
+    ctx.fillRect(x + carWidth, y + spostamento + 1 + carHeight + wheelHeight - 2, wheelWidth, wheelHeight);//basso
+    ctx.strokeRect(x + carWidth, y + spostamento + 1 + carHeight + wheelHeight - 2, wheelWidth, wheelHeight);
+    ctx.fillStyle = COLORS.white;
+    ctx.fillRect(x + wheelWidth/2 + carWidth -1, y + spostamento + 1 + wheelHeight, 2, carHeight - 2);//asse
+    
+	//corpo macchina largo (motorone)
+	ctx.fillStyle = COLORS.redCart;
+	ctx.strokeStyle = COLORS.white;
+	ctx.fillRect(x, y + spostamento + wheelHeight + 2, carWidth, carHeight - 4);
+	ctx.strokeRect(x, y + spostamento + wheelHeight + 2, carWidth, carHeight - 4);
+	//parte stretta anteriore (muso)
+	ctx.fillRect(x + carWidth, y + spostamento + wheelHeight + 4, carWidth / 2 + 2, carHeight - 8);
+	ctx.strokeRect(x + carWidth, y + spostamento + wheelHeight + 4, carWidth / 2 + 2, carHeight - 8);
+	//punta dietro
+	ctx.beginPath();
+	ctx.moveTo(x, y + spostamento + wheelHeight + 2);
+	ctx.lineTo(x, y + spostamento + wheelHeight + 10);
+	ctx.lineTo(x - 4, y + spostamento + wheelHeight + 6);
+	ctx.closePath();
+	ctx.fill();
+	ctx.stroke();
+  } else {
+    // ruote dietro (lato destro)
+    ctx.fillStyle = COLORS.black;
+    ctx.strokeStyle = COLORS.white;
+    ctx.fillRect(x + w + wheelWidth - carWidth, y + spostamento, wheelWidth, wheelHeight); // alto
+    ctx.strokeRect(x + w + wheelWidth - carWidth, y + spostamento, wheelWidth, wheelHeight);
+    ctx.fillRect(x + w + wheelWidth - carWidth, y + spostamento + carHeight + wheelHeight, wheelWidth, wheelHeight); // basso
+    ctx.strokeRect(x + w + wheelWidth - carWidth, y + spostamento + carHeight + wheelHeight, wheelWidth, wheelHeight);
+    ctx.fillStyle = COLORS.white;
+    ctx.fillRect(x + w + wheelWidth - carWidth + wheelWidth / 2 - 2, y + spostamento + wheelHeight, 2, carHeight); // asse
+    
+    // ruote avanti (lato sinistro)
+    ctx.fillStyle = COLORS.black;
+    ctx.strokeStyle = COLORS.white;
+    ctx.fillRect(x + w - carWidth - wheelWidth, y + spostamento + 1, wheelWidth, wheelHeight); // alto
+    ctx.strokeRect(x + w - carWidth - wheelWidth, y + spostamento + 1, wheelWidth, wheelHeight);
+    ctx.fillRect(x + w - carWidth - wheelWidth, y + spostamento + 1 + carHeight + wheelHeight - 2, wheelWidth, wheelHeight); // basso
+    ctx.strokeRect(x + w - carWidth - wheelWidth, y + spostamento + 1 + carHeight + wheelHeight - 2, wheelWidth, wheelHeight);
+    ctx.fillStyle = COLORS.white;
+    ctx.fillRect(x + w - carWidth - wheelWidth + wheelWidth / 2 - 1, y + spostamento + 1 + wheelHeight, 2, carHeight - 2); // asse
+    
+    // corpo macchina largo (motorone dietro)
+    ctx.fillStyle = COLORS.redCart;
+    ctx.strokeStyle = COLORS.white;
+    ctx.fillRect(x + w - carWidth, y + spostamento + wheelHeight + 2, carWidth, carHeight - 4);
+    ctx.strokeRect(x + w - carWidth, y + spostamento + wheelHeight + 2, carWidth, carHeight - 4);
+    
+    // parte stretta anteriore (muso sinistro)
+    ctx.fillRect(x + w - carWidth - carWidth / 2 - 2, y + spostamento + wheelHeight + 4, carWidth / 2 + 2, carHeight - 8);
+    ctx.strokeRect(x + w - carWidth - carWidth / 2 - 2, y + spostamento + wheelHeight + 4, carWidth / 2 + 2, carHeight - 8);
+    
+    // punta dietro (destra)
+    ctx.beginPath();
+    ctx.moveTo(x + w, y + spostamento + wheelHeight + 2);
+    ctx.lineTo(x + w, y + spostamento + wheelHeight + 10);
+    ctx.lineTo(x + w + 4, y + spostamento + wheelHeight + 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
+
+function drawApple2Wood(c) {
+  const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
+  if (screenY < -tile || screenY > canvas.height + tile) return;
+
+  const x = c.x;
+  const y = screenY;
+  const spostamento = 8;
+
+  ctx.fillStyle = COLORS.white;
+  ctx.strokeStyle = COLORS.black;
+  ctx.beginPath();
+  ctx.moveTo(x+2, y + spostamento);
+  ctx.lineTo(x+38, y + spostamento);
+  ctx.lineTo(x+40, y + 2 + spostamento);
+  ctx.lineTo(x+40, y + 22 + spostamento);
+  ctx.lineTo(x+38, y + 24 + spostamento);
+  ctx.lineTo(x+2, y + 24 + spostamento);
+  ctx.lineTo(x, y + 22 + spostamento);
+  ctx.lineTo(x, y + 2 + spostamento);
+  ctx.lineTo(x+2, y +  spostamento);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+}
+
+    
+//disegna le automobili
+function drawCar(c) {
+  let carType = c.type;
+  if(carType === "elegant") return drawCarApple2Elegant(c);
+  if(carType === "ferrari") return drawCarApple2Ferrari(c);
+  if(carType === "tir") return drawCarApple2Tir(c);
+
+  const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
+  if (screenY < -tile || screenY > canvas.height + tile) return;
+  const seconds = new Date().getSeconds();
+
+  var w = tile * 0.9;
+  var h = tile * 0.6;
+  var x = c.x + (tile - w)/2;
+  var y = screenY + (tile - h)/2 - 5;
+  
   // Ombra sotto auto
   ctx.fillStyle = COLORS.shadowDark;
   ctx.beginPath();
@@ -1478,9 +1912,10 @@ function shadeColor(color, percent) {
             }
 		  }
         }
+		
 		//fiume
 		if (row.type === "river") {
-		  let flagSave = Math.round(y - offset) === 0 ? false : true;
+		  let flagSave = godMode ? true : Math.round(y - offset) === 0 ? false : true;
 		  for (let c of row.woods) {
 		    c.x += c.speed;
 			if (c.speed>0 && c.x>canvas.width+tile) c.x=-tile;
@@ -1489,7 +1924,7 @@ function shadeColor(color, percent) {
 		    const cy = c.y/tile;
 			if (frog.x < 0 || frog.x > 9) flagSave = false;
 			
-			else if (!godMode && Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(y - offset) === 0) {
+			else if (Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(y - offset) === 0) {
               flagSave = true;
 			  frog.x = c.x/tile;
             }
@@ -1517,8 +1952,6 @@ function shadeColor(color, percent) {
     }
 
     // --- Loop ---
-	let isGameOver = false;
-	let signsToDraw = [];//cartelli vanno disegnati DOPO
     function draw() {
       ctx.clearRect(0,0,canvas.width,canvas.height);
       const sortedRows = Array.from(segments.keys()).sort((a,b)=>a-b);
@@ -1588,12 +2021,13 @@ function shadeColor(color, percent) {
 	  
 	  
       ctx.fillStyle = 'white';
-      ctx.font = '16px sans-serif';
+      ctx.font = '11px sans-serif';
 	  ctx.textAlign = 'left';
-	  ctx.fillText('TargetOffset: ' + targetOffset, 10, 20);
-      ctx.fillText('Offset: ' + offset, 10, 30);
-      ctx.fillText('Frog: x=' + frog.x, 280, 20);
-	  ctx.fillText('Frog: y=' + frog.y, 280, 30);
+	  ctx.fillText('[A]pple2Mode: '+ apple2Mode + ' - [G]odMode: ' + godMode + ' - Is[M]ute: ' + isMute + ' - [S]canLinesEnabled: ' + scanLinesEnabled, 0, 10);
+	  ctx.fillText('TargetOffset: ' + targetOffset, 0, 20);
+      ctx.fillText('Offset: ' + offset, 0, 30);
+      ctx.fillText('Frog: x=' + frog.x, 300, 20);
+	  ctx.fillText('Frog: y=' + frog.y, 300, 30);
     }
 
     function loop(){
@@ -1606,13 +2040,66 @@ function shadeColor(color, percent) {
 
 
 
+  function drawCricketeer(){
+    const cx = frog.x * tile + tile / 2;
+	const cy = canvas.height / 2 + tile / 2;
+
+    ctx.fillStyle = COLORS.white;
+	ctx.strokeStyle = COLORS.black;
+	
+	//codina
+	ctx.beginPath();
+	ctx.moveTo(cx - 2, cy + 6);
+	ctx.lineTo(cx, cy + 12);
+	ctx.lineTo(cx + 2, cy + 6);
+	ctx.closePath();
+	ctx.fill();
+	ctx.stroke();
+	
+	//antenne
+	ctx.moveTo(cx - 1, cy - 6);
+	ctx.lineTo(cx - 4, cy - 10);
+	ctx.moveTo(cx + 1, cy - 6);
+	ctx.lineTo(cx + 4, cy - 10);
+	ctx.stroke();
+	
+	//zampe sopra
+	ctx.moveTo(cx - 3, cy - 1);
+	ctx.lineTo(cx - 5, cy - 5);
+	ctx.moveTo(cx + 3, cy - 1);
+	ctx.lineTo(cx + 5, cy - 5);
+	ctx.stroke();
+	
+	//zampe sotto
+	ctx.moveTo(cx - 3, cy + 2);
+	ctx.lineTo(cx - 5, cy + 6);
+	ctx.lineTo(cx - 5, cy + 14);
+	ctx.moveTo(cx + 3, cy + 2);
+	ctx.lineTo(cx + 5, cy + 6);
+	ctx.lineTo(cx + 5, cy + 14);
+	ctx.stroke();
+	
+	//corpo
+	ctx.beginPath();
+	ctx.ellipse(cx, cy + 2, 3, 7, 0, 0, Math.PI * 2);
+	ctx.closePath();
+	ctx.fill();
+	ctx.stroke();
+	
+}
+
+	
+	
+
 
   function drawFrog() {
 	const cx = frog.x * tile;
     const cy = canvas.height / 2;
+	
+	if (apple2Mode) return drawCricketeer();
     
 	ctx.save();
-	ctx.translate(cx, cy);  
+	ctx.translate(cx, cy + 2);  
     ctx.scale(tile / 100, tile / 100);	
 
     // Ombra sotto
@@ -1755,7 +2242,14 @@ function shadeColor(color, percent) {
   }
   
   
-  
+  function changeScanLines() {
+    scanLinesEnabled = !scanLinesEnabled;
+	if (scanLinesEnabled) {
+		document.getElementById('scanlines-overlay').style.display = 'block';
+	} else {
+		document.getElementById('scanlines-overlay').style.display = 'none';
+	}
+  }
   
   function playSound(id, force = true) {
 	  if (isMute) return;
