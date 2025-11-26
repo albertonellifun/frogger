@@ -103,12 +103,11 @@
     const visibleRows = 10;//Math.ceil(canvas.height / tile) + 2;
     const extraRows = 2;
     
-    const frog = { x: 5, y: 0 }; // rana sempre centrata a y=0
-    const segments = new Map(); // mappa: y → riga
+    let frog = { x: 5, y: 0 }; // rana sempre centrata a y=0
+    let segments = new Map(); // mappa: y → riga
     
 	let offset = 0;         // posizione attuale della camera
 	let targetOffset = 0;   // offset desiderato verso cui ci muoviamo
-	let level = 0;
     
 	let godMode = false;
 	let isMute = false;
@@ -302,11 +301,13 @@
     }
 
     // Inizializza righe visibili
-    for (let i=visibleRows/2; i>-visibleRows/2; i--){
-      generateRow(i);
-    }
-
-    
+	function initRows() {
+      for (let i = visibleRows / 2; i > -visibleRows / 2; i--) {
+        generateRow(i);
+      }
+	}
+	
+	
 	//controlli tastiera
     window.addEventListener('keydown', e=>{
       if (e.keyCode === 37 && frog.x>0) { frog.x--; playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound'); }
@@ -346,6 +347,11 @@
 	  if (e.keyCode === 83) {
 	    //83=S
 		changeScanLines();
+	  }
+	  
+	  if (e.keyCode === 82) {
+	    //82=R
+		reset();
 	  }
     });
 
@@ -1661,7 +1667,7 @@ function drawCarApple2Ferrari(c) {
   }
 }
 
-
+//tronchi galleggianti
 function drawApple2Wood(c) {
   const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
   if (screenY < -tile || screenY > canvas.height + tile) return;
@@ -1895,7 +1901,7 @@ function shadeColor(color, percent) {
         //erbetta
 		if (row.type === "grass") {
 		  if (row.hasLake) {
-		    if (!godMode && Math.abs(row.lake/tile - frog.x) < 0.5 && Math.round(y - offset) === 0) {
+		    if (!apple2Mode && !godMode && Math.abs(row.lake/tile - frog.x) < 0.5 && Math.round(y - offset) === 0) {
               alert('💀 Game Over!');
               isGameOver = true;
             }
@@ -2023,7 +2029,7 @@ function shadeColor(color, percent) {
       ctx.fillStyle = 'white';
       ctx.font = '11px sans-serif';
 	  ctx.textAlign = 'left';
-	  ctx.fillText('[A]pple2Mode: '+ apple2Mode + ' - [G]odMode: ' + godMode + ' - Is[M]ute: ' + isMute + ' - [S]canLinesEnabled: ' + scanLinesEnabled, 0, 10);
+	  ctx.fillText('[A]pple2: '+ apple2Mode + '  -  [G]od: ' + godMode + '  -  [M]ute: ' + isMute + '  -  [S]canLines: ' + scanLinesEnabled + '  -  [R]eset', 0, 10);
 	  ctx.fillText('TargetOffset: ' + targetOffset, 0, 20);
       ctx.fillText('Offset: ' + offset, 0, 30);
       ctx.fillText('Frog: x=' + frog.x, 300, 20);
@@ -2031,15 +2037,20 @@ function shadeColor(color, percent) {
     }
 
     function loop(){
-	  if(isGameOver) return;
-      update();
-      draw();
+	  console.log('loop...');
+	  if(!isGameOver) {
+        update();
+        draw();
+	  }
       requestAnimationFrame(loop);
     }
-    loop();
+    
+	initRows();
+	requestAnimationFrame(loop);
 
 
 
+//apple2 forever
   function drawCricketeer(){
     const cx = frog.x * tile + tile / 2;
 	const cy = canvas.height / 2 + tile / 2;
@@ -2088,10 +2099,8 @@ function shadeColor(color, percent) {
 	
 }
 
-	
-	
 
-
+//la rana pazza
   function drawFrog() {
 	const cx = frog.x * tile;
     const cy = canvas.height / 2;
@@ -2239,6 +2248,19 @@ function shadeColor(color, percent) {
 	ctx.lineWidth = 1;
 
     ctx.restore();
+  }
+  
+
+//resetta tutto
+  function reset() {
+	frog = { x: 5, y: 0 };
+    segments = new Map();
+	offset = 0;
+	targetOffset = 0;
+	signsToDraw = [];
+	initRows();
+	
+	isGameOver = false;
   }
   
   
