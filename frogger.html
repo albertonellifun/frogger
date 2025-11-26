@@ -147,7 +147,8 @@
 
 
     // --- Generazione righe ---
-    function generateRow(y) {
+    function generateRow(y, frogDirection = 1) {
+	debugger;
       if (segments.has(y)) return; // già esistente
    
       let countGrass = 0;
@@ -167,11 +168,12 @@
 	  let apple2CarType1 = y%4 === 0 ? "ferrari" : y%4 === 3 ? "elegant" : y%4 === 2 ? "tir" : "furgo";
 	  let apple2CarType2 = y%4 === 1 ? "ferrari" : y%4 === 2 ? "elegant" : y%4 === 3 ? "tir" : "furgo";
 	  
+	  
       //strada doppia
-      const makeDoubleRoad = y !== 0 && (countDouble<3 || countGrass>countTot/2);//Math.random() < 0.25 && (countGrass - countRoad) > 1;
+      const makeDoubleRoad = y !== 0 && (countDouble<4 || (countGrass >= countTot / 2 && countDouble < 4));
       if (makeDoubleRoad) {
         // Evita di creare doppia se la successiva esiste già
-        if (!segments.has(y + 1)) {
+        if (frogDirection === 1 && !segments.has(y + 1)) {
 		
           let workInProgress = Math.random() < 0.3;
 		  let cart = 0;
@@ -206,16 +208,60 @@
             };
             rowB.cars.push(c2);
           }
-          segments.set(y+1, rowB);
+          segments.set(y + 1, rowB);
           
           console.log('generate '+y+' frog y'+frog.y+ ' ->> double', rowA, rowB);
           return;
         }
+		
+		else if (frogDirection === -1 && !segments.has(y - 1)) {
+		
+          let workInProgress = Math.random() < 0.3;
+		  let cart = 0;
+		  let cartType = 0;
+		  if (Math.random() < 0.5) {
+		    cart = (1 + ((Math.random() * 10) | 0 )) * tile;//posizione
+		    cartType = 1 + ((Math.random() * 8) | 0);
+		  }
+          var rowA = { y: y, type: "road", lane: 2, cars: [], zebra: 0, workInProgress: workInProgress, cart: cart, cartType: cartType };
+          var speedA = 1 + Math.random() * 1.5;
+          for (var j = 0; j < 2; j++) {
+            var c = {
+              x: (j * 5 + randomInt(0, 2)) * tile,
+              y: y * tile,
+              speed: speedA,
+              color: randomCarColor(),
+			  type: apple2Mode ? apple2CarType1 : Math.random() < 0.1 ? "police" : "car"
+            };
+            rowA.cars.push(c);
+          }
+          segments.set(y, rowA);
+        
+          var rowB = { y: y - 1, type: "road", lane: 1, cars: [], zebra: 0, workInProgress: workInProgress, cart: cart, cartType: cartType };
+          var speedB = -(1 + Math.random() * 1.5);
+          for (var j = 0; j < 2; j++) {
+            var c2 = {
+              x: (j * 5 + randomInt(0, 2)) * tile,
+              y: (y-1) * tile,
+              speed: speedB,
+              color: randomCarColor(),
+			  type: apple2Mode ? apple2CarType2 : "car"
+            };
+            rowB.cars.push(c2);
+          }
+          segments.set(y - 1, rowB);
+          
+          console.log('generate '+y+' frog y'+frog.y+ ' ->> double', rowA, rowB);
+          return;
+        }
+		
+		
         else console.log('collisione');
 	  }   
       
+	  
 	  //strada singola
-      const makeRoad = y !== 0 && countGrass>countTot/2;//Math.random() < 0.7 && (countGrass - countRoad) > 0;
+      const makeRoad = y !== 0 && countGrass >= countTot / 2;
       if (makeRoad) {
         const dir = Math.random() < 0.5 ? 1 : -1;
         const speed = dir * (1 + Math.random() * 1.2);
@@ -255,8 +301,9 @@
         return;
       }
       
+	  
 	  //fiume
-	  const makeRiver = y !== 0 && countRiver ==0 || Math.random() < 0.1;
+	  const makeRiver = y !== 0 && countRiver === 0 || Math.random() < 0.1;
 	  if (makeRiver) {
 	    const dir = Math.random() < 0.5 ? 1 : -1;
         const speed = dir * 0.2;
@@ -274,6 +321,7 @@
 		return;
 	  }
 	  
+	  
       //erba
 	  let hasLake = false;
       let lake = 0;
@@ -286,9 +334,10 @@
           hasLake = true;//tipo strisce
         }
 	  const row = { type:'grass', cars:[], hasLake: hasLake, lake: lake };
+	  
+	  //falchetto
 	  if (Math.random()<0.1) {
-	    //const dir = Math.random() < 0.5 ? 1 : -1;
-        const speed = (2 + Math.random() * 3);
+	    const speed = (2 + Math.random() * 3);
 	    row.cars.push({
             x: 0,
             y: y*tile,
@@ -303,8 +352,8 @@
 
     // Inizializza righe visibili
 	function initRows() {
-      for (let i = visibleRows / 2; i > -visibleRows / 2; i--) {
-        generateRow(i);
+      for (let i = visibleRows / 2; i >= -visibleRows / 2; i--) {
+        generateRow(i, -1);
       }
 	}
 	
@@ -315,7 +364,7 @@
       if (e.keyCode === 39 && frog.x<cols-1) { frog.x++; playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound'); }
 	  if (e.keyCode === 38) { // su
         targetOffset++;
-		generateRow(Math.floor(targetOffset + visibleRows/2));
+		generateRow(Math.floor(targetOffset + visibleRows/2), 1);
 		//offset++;
         //generateRow(offset + visibleRows/2);
         pruneRows();
@@ -323,7 +372,7 @@
       }
 	  if (e.keyCode === 40) { // giù
         targetOffset--;
-		generateRow(Math.floor(targetOffset - visibleRows/2));
+		generateRow(Math.floor(targetOffset - visibleRows/2), -1);
 		//offset--;
         //generateRow(offset - visibleRows/2);
         pruneRows();
@@ -2157,7 +2206,6 @@ function shadeColor(color, percent) {
     }
 
     function loop(){
-	  console.log('loop...');
 	  if(!isGameOver) {
         update();
         draw();
