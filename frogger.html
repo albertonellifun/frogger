@@ -148,8 +148,7 @@
 
     // --- Generazione righe ---
     function generateRow(y, frogDirection = 1) {
-	debugger;
-      if (segments.has(y)) return; // già esistente
+	  if (segments.has(y)) return; // già esistente
    
       let countGrass = 0;
 	  let countRiver = 0;
@@ -165,8 +164,9 @@
       }
 	  console.log('grass='+countGrass+' road='+countRoad+' double='+countDouble+ ' river='+countRiver);
 	  
-	  let apple2CarType1 = y%4 === 0 ? "ferrari" : y%4 === 3 ? "elegant" : y%4 === 2 ? "tir" : "furgo";
-	  let apple2CarType2 = y%4 === 1 ? "ferrari" : y%4 === 2 ? "elegant" : y%4 === 3 ? "tir" : "furgo";
+	  let yy = Math.abs(y);
+	  let apple2CarType1 = yy%4 === 0 ? "ferrari" : yy%4 === 3 ? "elegant" : yy%4 === 2 ? "tir" : "furgo";
+	  let apple2CarType2 = yy%4 === 1 ? "ferrari" : yy%4 === 2 ? "elegant" : yy%4 === 3 ? "tir" : "furgo";
 	  
 	  
       //strada doppia
