@@ -1,5 +1,5 @@
 # frogger
-Frogger & Cricketeer for Apple ][ clone in Html + Javascript
+Frogger & Cricketeer Apple ][ clone in Html + Javascript
 [link](https://albertonellifun.github.io/frogger/frogger.html)
 
 
