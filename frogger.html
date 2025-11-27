@@ -86,7 +86,7 @@
 	  
 	  orangeCart:'#f80',//arancione cartello + autovelox
 	  grayPole:'#777',//palo
-	  grayTarmacLight:'#666', grayTarmacDark:'#444',//asfalto
+	  grayTarmacLight:'#666', grayTarmacDark:'#444',grayTarmacDarkest:'#222',//asfalto
 	  grayWheels:'#111', grayRims:'#888',//ruote auto
 	  carsBwLights:'#900', carsFwLights:'#ff9',//luci auto
 	  carsBwLightsOn:'#f00', carsFwLightsOn:'#fff',//luci auto
@@ -498,7 +498,7 @@
 	    const lakeX = row.lake;
 		const lakeY = screenY + tile * 0.10;
 		
-		if(apple2Mode) return drawApple2House(lakeX, lakeY);
+		if(apple2Mode) return drawApple2House(0, lakeY);
 
 		const rx = tile * 0.5;
 		const ry = tile * 0.4;
@@ -593,7 +593,7 @@ function drawSingleRoad(y, row) {
   const screenY = canvas.height/2 - (y - offset)*tile;
 
   // Asfalto
-  ctx.fillStyle = COLORS.grayTarmacLight;
+  ctx.fillStyle = !apple2Mode ? COLORS.grayTarmacLight : COLORS.grayTarmacDarkest;
   ctx.fillRect(0, screenY, canvas.width, tile);
 
   // linee continue giallo ogni 3 righe, altrimenti bianco
@@ -657,7 +657,7 @@ function drawRoadPair(y1, y2, row1) {
   var height = tile * 2;
   
   // Sfondo asfalto
-  ctx.fillStyle = COLORS.grayTarmacDark;
+  ctx.fillStyle = !apple2Mode ? COLORS.grayTarmacDark : COLORS.grayTarmacDarkest;
   ctx.fillRect(0, top, canvas.width, height);
 
   // Linee bianche continue sopra e sotto
@@ -1390,13 +1390,19 @@ function drawFalcon(c) {
 
 //casetta
 function drawApple2House(x, y) {
+  //sfondo
+  ctx.fillStyle = COLORS.blueRiverLight
+  ctx.fillRect(x, y-2, 40, 40);
   
   ctx.fillStyle = !bw ? COLORS.grayTarmacLight : COLORS.black;
   ctx.strokeStyle = !bw ? COLORS.black : COLORS.white;
   
   //corpo casa
-  ctx.fillRect(x + 4, y + 6, 36, 26);
-  ctx.strokeRect(x + 4, y + 6, 36, 26);
+  ctx.fillRect(x + 4, y + 6, 34, 26);
+  ctx.strokeRect(x + 4, y + 6, 34, 26);
+  
+  //gradino
+  ctx.strokeRect(x + 3, y + 32, 43, 2);
 
   //porta
   ctx.fillStyle = COLORS.black;
@@ -1405,17 +1411,17 @@ function drawApple2House(x, y) {
   
   //finestra
   ctx.fillStyle = !bw ? COLORS.yellowCart : COLORS.white;
-  ctx.fillRect(x + 30, y + 10, 8, 16);
+  ctx.fillRect(x + 30, y + 10, 6, 16);
   ctx.fillStyle = !bw ? COLORS.grayTarmacLight : COLORS.black;
-  ctx.fillRect(x + 33, y + 10, 2, 16);
-  ctx.fillRect(x + 30, y + 18, 8, 2);
+  ctx.fillRect(x + 33, y + 10, 1, 16);
+  ctx.fillRect(x + 30, y + 18, 6, 2);
   
   //tetto
   ctx.strokeStyle = !bw ? COLORS.black : COLORS.white;
   ctx.fillStyle = COLORS.redCart;
   ctx.beginPath();
-  ctx.moveTo(x+4, y+6);
-  ctx.lineTo(x+12, y-2);
+  ctx.moveTo(x+2, y+6);
+  ctx.lineTo(x+10, y-2);
   ctx.lineTo(x+32, y-2);
   ctx.lineTo(x+40, y+6);
   ctx.closePath();
@@ -1424,7 +1430,7 @@ function drawApple2House(x, y) {
   
   //base erbetta
   ctx.fillStyle = COLORS.greenGrassDark;
-  ctx.fillRect(x-2,y+34,44,6); 
+  ctx.fillRect(x-2,y+34,44,5); 
   
   if (x < canvas.width) {
     drawApple2Tree(x+40, y, 1);
@@ -1436,6 +1442,10 @@ function drawApple2House(x, y) {
 
 //alberello
 function drawApple2Tree(x, y, type = 2) {
+  //sfondo
+  ctx.fillStyle = COLORS.blueRiverLight
+  ctx.fillRect(x, y-2, 40, 40);
+  
   //tronco
   ctx.fillStyle = !bw ? COLORS.brownTutleDark : COLORS.white;
   ctx.fillRect(x + 18, y + 20, 5, 12); // tronco
@@ -1451,24 +1461,24 @@ function drawApple2Tree(x, y, type = 2) {
   //vertici
   let points = [];
   if(type === 1) points = [
-    [x + 4 + half - 6, y - 2],           // alto sinistra
-    [x + 4 + half + 6, y - 3],           // alto destra
-    [x + 4 + size, y + 4],           // destra alto
-    [x + 4 + size, y + 18],          // destra basso
-    [x + 4 + half + 6, y + 20],      // basso destra
-    [x + 4 + half - 6, y + 19],      // basso sinistra
-    [x + 4, y + 12],                 // sinistra basso
-    [x + 4, y + 4],                  // sinistra alto
+    [x + 4 + half - 6, y + 3],           // alto sinistra
+    [x + 4 + half + 6, y],           // alto destra
+    [x + 4 + size, y + 7],           // destra alto
+    [x + 4 + size, y + 21],          // destra basso
+    [x + 4 + half + 6, y + 23],      // basso destra
+    [x + 4 + half - 6, y + 22],      // basso sinistra
+    [x + 4, y + 15],                 // sinistra basso
+    [x + 4, y + 7],                  // sinistra alto
   ];
   if(type === 2) points = [
-    [x + 4 + half - 7, y - 3],           // alto sinistra
-    [x + 4 + half + 6, y - 3],           // alto destra
-    [x + 4 + size, y + 4],           // destra alto
-    [x + 4 + size - 2, y + 23],          // destra basso
-    [x + 4 + half + 5, y + 20],      // basso destra
-    [x + 4 + half - 3, y + 19],      // basso sinistra
-    [x + 8, y + 24],                 // sinistra basso
-    [x + 6, y + 14],                  // sinistra alto
+    [x + 4 + half - 7, y],           // alto sinistra
+    [x + 4 + half + 6, y],           // alto destra
+    [x + 4 + size, y + 7],           // destra alto
+    [x + 4 + size - 2, y + 26],          // destra basso
+    [x + 4 + half + 5, y + 23],      // basso destra
+    [x + 4 + half - 3, y + 22],      // basso sinistra
+    [x + 8, y + 27],                 // sinistra basso
+    [x + 6, y + 17],                  // sinistra alto
   ];
 
   //disegno
@@ -1486,7 +1496,7 @@ function drawApple2Tree(x, y, type = 2) {
   
   //base erbetta
   ctx.fillStyle = COLORS.greenGrassDark;
-  ctx.fillRect(x-2,y+34,44,6); 
+  ctx.fillRect(x-2,y+34,44,5); 
 }
 
 //il furgò di batman!
