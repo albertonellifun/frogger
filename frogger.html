@@ -304,7 +304,7 @@
       
 	  
 	  //fiume
-	  const makeRiver = y !== 0 && countRiver === 0 || Math.random() < 0.1;
+	  const makeRiver = y !== 0 && (countRiver === 0 || Math.random() < 0.1);
 	  if (makeRiver) {
 	    const dir = Math.random() < 0.5 ? 1 : -1;
         const speed = dir * 0.2;
@@ -2080,7 +2080,7 @@ function shadeColor(color, percent) {
 	  
 	  
 	  if (frog.x <= 0) frog.x = 0;
-	  if (frog.x >= 9) frog.x = 9;
+	  if (frog.x >= cols - 1) frog.x = cols - 1;
 
       for (let [y,row] of segments) {
         //erbetta
@@ -2113,7 +2113,7 @@ function shadeColor(color, percent) {
             if (c.speed<0 && c.x<-tile) c.x=canvas.width+tile;
 			
 		    const cy = c.y/tile;
-			if (frog.x < 0 || frog.x > 9) flagSave = false;
+			if (frog.x < 0 || frog.x > cols - 1) flagSave = false;
 			
 			else if (Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(y - offset) === 0) {
               flagSave = true;
