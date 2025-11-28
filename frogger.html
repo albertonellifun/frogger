@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, xxxmaximum-scale=1.0, xxxuser-scalable=no"/>
+  <link rel="shortcut icon" type="image/x-icon" href="favicon.ico"/>
   <title>Frogger Infinite Bidirezionale / Apple ][ Cricketeer Clone</title>
   <style>
     body {
@@ -451,10 +453,12 @@
     gradWater.addColorStop(1, COLORS.blueRiverDark);
     ctx.fillStyle = gradWater;
 	
+	
 	//bordi ondulati
     const waveHeight = tile / 6;//altezza onda in px
     const waveLength = tile * 2;//distanza onde in px
 
+    ctx.strokeStyle = COLORS.greenGrassDark;
     ctx.beginPath();
 
     //bordo alto
@@ -481,7 +485,8 @@
     }
 
     ctx.closePath();
-    ctx.fill();
+	ctx.fill();
+	ctx.stroke();
 }
   
   
@@ -1564,6 +1569,10 @@ function drawCarApple2Furgo(c) {
 	ctx.closePath();
 	ctx.fill();
 	ctx.stroke();
+	//cofano
+	ctx.beginPath();
+	ctx.arc(x + 32, y + 15 + spostamento, 8, Math.PI * 1.75, Math.PI * 0.25, false);
+	ctx.stroke();
   } else {
     //corpo rettangolare bianco
 	ctx.beginPath();
@@ -1614,6 +1623,10 @@ function drawCarApple2Furgo(c) {
 	ctx.closePath();
 	ctx.fill();
 	ctx.stroke();
+	//cofano
+	ctx.beginPath();
+    ctx.arc(x + 8, y + 15 + spostamento, 8, Math.PI * 0.75, Math.PI * 1.25, false);
+    ctx.stroke();
   }
 }
 
@@ -1647,7 +1660,11 @@ function drawCarApple2Tir(c) {
 	//tettuccio
 	ctx.beginPath();
 	ctx.arc(x + tile - 16, y + carHeight / 2 + spostamento, carHeight/2, Math.PI * 1.75, Math.PI * 0.25, false);
-    ctx.stroke();
+	ctx.stroke();
+	//originale, non mi piace
+	//ctx.fillRect(x + tile - 3, y + spostamento + 6, 1, 14);
+	//ctx.fillRect(x + tile - 6, y + spostamento + 8, 1, 2);
+    //ctx.fillRect(x + tile - 6, y + spostamento + carHeight - 10, 1, 2);
 	//puntini
 	for (let i=1;i<10;i++) {
 		ctx.fillRect(x + tile - 10 - i * 5, y + spostamento + 2, 2, 2);
@@ -1668,6 +1685,10 @@ function drawCarApple2Tir(c) {
 	ctx.beginPath();
     ctx.arc(x + 16, y + carHeight / 2 + spostamento, carHeight/2, Math.PI * 0.75, Math.PI * 1.25, false);
     ctx.stroke();
+	//originale, non mi piace
+	//ctx.fillRect(x + 3, y + spostamento + 6, 1, 14);
+	//ctx.fillRect(x + 6, y + spostamento + 8, 1, 2);
+    //ctx.fillRect(x + 6, y + spostamento + carHeight - 10, 1, 2);
 	//puntini
 	for (let i=1;i<10;i++) {
 		ctx.fillRect(x + 10 + i * 5, y + spostamento + 2, 2, 2);
@@ -1861,7 +1882,7 @@ function drawApple2Wood(c) {
   const spostamento = 8;
 
   ctx.fillStyle = !bw ? COLORS.brownTutleDark : COLORS.white;
-  ctx.strokeStyle = COLORS.black;
+  ctx.strokeStyle = !bw ? COLORS.brownTurtleBorder : COLORS.black;
   ctx.beginPath();
   ctx.moveTo(x+2, y + spostamento);
   ctx.lineTo(x+38, y + spostamento);
@@ -1875,6 +1896,18 @@ function drawApple2Wood(c) {
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
+  
+  if (!bw) {
+    ctx.setLineDash([6, 1]);
+    ctx.strokeStyle = COLORS.brownTurtleBorder;
+    for (let i = 0; i < 12; i+=2) {
+	  let xx = i%4 === 0 ? 1 : 0;//i%4 === 0 ? 1 : i%6 === 0 ? 2 : 0;
+	  ctx.moveTo(x + 2 + xx, y + spostamento + i * 2);
+	  ctx.lineTo(x + 38 - xx, y + spostamento + i * 2);
+	}
+	ctx.stroke();
+	ctx.setLineDash([]);
+  }
 }
 
     
@@ -2115,7 +2148,7 @@ function shadeColor(color, percent) {
 		    const cy = c.y/tile;
 			if (frog.x < 0 || frog.x > cols - 1) flagSave = false;
 			
-			else if (Math.abs(c.x/tile - frog.x) < 0.5 && Math.round(y - offset) === 0) {
+			else if (Math.abs(c.x/tile - frog.x) <= 0.5 && Math.round(y - offset) === 0) {
               flagSave = true;
 			  frog.x = c.x/tile;
             }
