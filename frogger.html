@@ -234,7 +234,7 @@
               y: y * tile,
               speed: speedA,
               color: randomCarColor(),
-			  type: apple2Mode ? apple2CarType1 : Math.random() < 0.1 ? "police" : "car"
+			  type: apple2Mode ? apple2CarType2 : "car"
             };
             rowA.cars.push(c);
           }
@@ -248,7 +248,7 @@
               y: (y-1) * tile,
               speed: speedB,
               color: randomCarColor(),
-			  type: apple2Mode ? apple2CarType2 : "car"
+			  type: apple2Mode ? apple2CarType1 : Math.random() < 0.1 ? "police" : "car"
             };
             rowB.cars.push(c2);
           }
@@ -360,6 +360,33 @@
       }
 	}
 	
+	
+	//controlli touch rozzi ma efficaci (spero)
+	canvas.addEventListener("touchstart", e => {
+		if (isGameOver) return;
+		const t = e.touches[0];
+		startX = t.clientX;
+		startY = t.clientY;
+		let xx = window.screen.width / 8;//
+		let yy = window.screen.height / 8;
+		
+		if (startX < 3 * xx && frog.x>0) { frog.x--; playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound'); } 
+		if (startX > 5 * xx && frog.x<cols-1) { frog.x++; playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound'); }
+		if (startY < 3 * yy) {
+		targetOffset++;
+		generateRow(Math.floor(targetOffset + visibleRows/2), 1);
+		pruneRows();
+		playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
+		}
+		if (startY > 5 * yy) {
+		targetOffset--;
+		generateRow(Math.floor(targetOffset - visibleRows/2), -1);
+		pruneRows();
+		playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
+		}
+		
+		e.preventDefault();
+	}, { passive: false });
 	
 	//controlli tastiera
     window.addEventListener('keydown', e=>{
@@ -1871,6 +1898,8 @@ function drawCarApple2Ferrari(c) {
     ctx.stroke();
   }
 }
+
+
 
 //tronchi galleggianti
 function drawApple2Wood(c) {
