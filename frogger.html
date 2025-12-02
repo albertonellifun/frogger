@@ -361,24 +361,110 @@
 	}
 	
 	
+	//controlli touch fixati da copilot (funzioneranno?)
+	let touchData = { startX: 0, startY: 0, startTime: 0 };
+
+    canvas.addEventListener("touchstart", e => {
+      if (isGameOver) return;
+      const t = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      touchData.startX = t.clientX - rect.left;
+      touchData.startY = t.clientY - rect.top;
+      touchData.startTime = Date.now();
+      // Prevent the browser from interpreting gestures (scroll/pinch)
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener("touchmove", e => {
+      // Prevent scrolling while interacting with the game
+      e.preventDefault();
+    }, { passive: false });
+
+    canvas.addEventListener("touchend", e => {
+      if (isGameOver) return;
+      const t = e.changedTouches[0];
+      const rect = canvas.getBoundingClientRect();
+      const endX = t.clientX - rect.left;
+      const endY = t.clientY - rect.top;
+      const dx = endX - touchData.startX;
+      const dy = endY - touchData.startY;
+      const adx = Math.abs(dx);
+      const ady = Math.abs(dy);
+
+      // Threshold = at least 5% of canvas width OR 20px minimum
+      const swipeThreshold = Math.max(20, rect.width * 0.05);
+
+      // Horizontal swipe
+      if (adx > ady && adx > swipeThreshold) {
+        if (dx < 0 && frog.x > 0) {
+          frog.x--;
+          playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
+        } else if (dx > 0 && frog.x < cols - 1) {
+          frog.x++;
+          playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
+        }
+      }
+      // Vertical swipe
+      else if (ady > adx && ady > swipeThreshold) {
+        if (dy < 0) {
+          // swipe up -> move camera forward
+          targetOffset++;
+          generateRow(Math.floor(targetOffset + visibleRows / 2), 1);
+          pruneRows();
+          playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
+        } else {
+          // swipe down -> move camera backward
+          targetOffset--;
+          generateRow(Math.floor(targetOffset - visibleRows / 2), -1);
+          pruneRows();
+          playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
+        }
+      }
+      // Tap (small movement) -> interpret by zones relative to canvas thirds
+      else {
+        const thirdW = rect.width / 3;
+        const thirdH = rect.height / 3;
+        if (endX < thirdW && frog.x > 0) {
+          frog.x--;
+          playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
+        } else if (endX > 2 * thirdW && frog.x < cols - 1) {
+          frog.x++;
+          playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
+        } else if (endY < thirdH) {
+          targetOffset++;
+          generateRow(Math.floor(targetOffset + visibleRows / 2), 1);
+          pruneRows();
+          playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
+        } else if (endY > 2 * thirdH) {
+          targetOffset--;
+          generateRow(Math.floor(targetOffset - visibleRows / 2), -1);
+          pruneRows();
+          playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
+        } else {
+          // central tap: do nothing or you can add action here
+        }
+      }
+
+      e.preventDefault();
+    }, { passive: false });
+	/*	
 	//controlli touch rozzi ma efficaci (spero)
 	canvas.addEventListener("touchstart", e => {
 		if (isGameOver) return;
 		const t = e.touches[0];
 		startX = t.clientX;
 		startY = t.clientY;
-		let xx = window.screen.width / 8;//
-		let yy = window.screen.height / 8;
+		let xx = window.screen.width;//
+		let yy = window.screen.height;
 		
-		if (startX < 3 * xx && frog.x>0) { frog.x--; playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound'); } 
-		if (startX > 5 * xx && frog.x<cols-1) { frog.x++; playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound'); }
-		if (startY < 3 * yy) {
+		if (startX < xx * 0.3 && frog.x>0) { frog.x--; playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound'); } 
+		else if (startX > xx * 0.7 && frog.x<cols-1) { frog.x++; playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound'); }
+		else if (startY < yy * 0.4) {
 		targetOffset++;
 		generateRow(Math.floor(targetOffset + visibleRows/2), 1);
 		pruneRows();
 		playSound(apple2Mode ? 'cricketeerSound' : 'cracraSound');
-		}
-		if (startY > 5 * yy) {
+		} else if (startY > yy * 0.6) {
 		targetOffset--;
 		generateRow(Math.floor(targetOffset - visibleRows/2), -1);
 		pruneRows();
@@ -387,6 +473,7 @@
 		
 		e.preventDefault();
 	}, { passive: false });
+	*/
 	
 	//controlli tastiera
     window.addEventListener('keydown', e=>{
