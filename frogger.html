@@ -168,8 +168,8 @@
 	  console.log('grass='+countGrass+' road='+countRoad+' double='+countDouble+ ' river='+countRiver);
 	  
 	  let yy = Math.abs(y);
-	  let apple2CarType1 = yy%4 === 0 ? "ferrari" : yy%4 === 3 ? "elegant" : yy%4 === 2 ? "tir" : "furgo";
-	  let apple2CarType2 = yy%4 === 1 ? "ferrari" : yy%4 === 2 ? "elegant" : yy%4 === 3 ? "tir" : "furgo";
+	  let apple2CarType1 = yy%5 === 0 ? "ferrari" : yy%5 === 3 ? "elegant" : yy%5 === 2 ? "tir" : yy%5 === 1 ? "generalLee" : "furgo";
+	  let apple2CarType2 = yy%5 === 1 ? "ferrari" : yy%5 === 2 ? "elegant" : yy%5 === 3 ? "tir" : yy%5 === 4 ? "generalLee" : "furgo";
 	  
 	  
       //strada doppia
@@ -1885,6 +1885,160 @@ function drawCarApple2Elegant(c) {
   }
 }
 
+//generale lee
+function drawCarApple2GeneralLee(c) {
+  const screenY = canvas.height / 2 - (c.y / tile - offset) * tile;
+  if (screenY < -tile || screenY > canvas.height + tile) return;
+
+  const w = tile * 0.9;
+  const h = tile * 0.6;
+  const x = c.x + (tile - w) / 2;
+  const y = screenY + (tile - h) / 2 - 5;
+
+  //ctx.fillStyle=COLORS.redCart;
+  //ctx.fillRect(x,y,tile,tile);
+
+
+  const carWidth = 40;
+  const carHeight = 20;
+  const spostamento = 6;
+
+  // Corpo rettangolare bianco
+  ctx.fillStyle = !bw ? c.color : COLORS.white;
+  ctx.strokeStyle = COLORS.black;
+  ctx.fillRect(x, y + spostamento, carWidth, carHeight);
+  ctx.strokeRect(x, y + spostamento, carWidth, carHeight);
+
+  if(c.speed > 0) {
+    //cofano con UU
+	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+    ctx.moveTo(x + carWidth - 7, y + carHeight / 2 + spostamento - 3);
+	ctx.lineTo(x + carWidth - 3, y + carHeight / 2 + spostamento - 3);
+	ctx.lineTo(x + carWidth - 3, y + carHeight / 2 + spostamento - 6);
+	ctx.moveTo(x + carWidth - 7, y + carHeight / 2 + spostamento + 3);
+	ctx.lineTo(x + carWidth - 3, y + carHeight / 2 + spostamento + 3);
+	ctx.lineTo(x + carWidth - 3, y + carHeight / 2 + spostamento + 6);
+	ctx.stroke();
+	
+	//parabrezza
+	ctx.fillStyle = COLORS.black;
+	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+    ctx.beginPath();
+    ctx.moveTo(x + carWidth/2 + 5, y + spostamento + 4);
+	ctx.lineTo(x + carWidth/2 + 5, y + carHeight + spostamento - 4);//giu
+	ctx.lineTo(x + carWidth/2 + 8, y + carHeight + spostamento - 2);//avanti
+	ctx.lineTo(x + carWidth/2 + 8, y + spostamento + 2);//su
+	ctx.lineTo(x + carWidth/2 + 5, y + spostamento + 4);//inizio
+	ctx.closePath();
+	ctx.fill();
+    ctx.stroke();
+	
+	//lunotto
+	ctx.fillStyle = COLORS.black;
+	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+	ctx.beginPath();
+    ctx.moveTo(x + 6, y + spostamento + 6);
+	ctx.lineTo(x + 6, y + carHeight + spostamento - 6);//giu
+	ctx.lineTo(x + 9, y + carHeight + spostamento - 4);//avanti
+	ctx.lineTo(x + 9, y + spostamento + 4);//su
+	ctx.lineTo(x + 6, y + spostamento + 6);//inizio
+	ctx.closePath();
+	ctx.fill();
+    ctx.stroke();
+	
+	
+	drawCroceSudista(x, y, carWidth, carHeight, spostamento);
+  } else {
+    //cofano con UU
+	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+    ctx.moveTo(x + 7, y + carHeight / 2 + spostamento - 3);
+	ctx.lineTo(x + 3, y + carHeight / 2 + spostamento - 3);
+	ctx.lineTo(x + 3, y + carHeight / 2 + spostamento - 6);
+	ctx.moveTo(x + 7, y + carHeight / 2 + spostamento + 3);
+	ctx.lineTo(x + 3, y + carHeight / 2 + spostamento + 3);
+	ctx.lineTo(x + 3, y + carHeight / 2 + spostamento + 6);
+	ctx.stroke();
+	
+	//parabrezza
+	ctx.fillStyle = COLORS.black;
+	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+    ctx.beginPath();
+    ctx.moveTo(x + 12, y + spostamento + 2);
+	ctx.lineTo(x + 12, y + carHeight + spostamento - 2);//giu
+	ctx.lineTo(x + 15, y + carHeight + spostamento - 4);//avanti
+	ctx.lineTo(x + 15, y + spostamento + 4);//su
+	ctx.lineTo(x + 12, y + spostamento + 2);//inizio
+	ctx.closePath();
+	ctx.fill();
+    ctx.stroke();
+	
+	//lunotto
+	ctx.fillStyle = COLORS.black;
+	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+	ctx.beginPath();
+    ctx.moveTo(x + 14 + carWidth/2, y + spostamento + 6);
+	ctx.lineTo(x + 14 + carWidth/2, y + carHeight + spostamento - 6);//giu
+	ctx.lineTo(x + 11 + carWidth/2, y + carHeight + spostamento - 4);//avanti
+	ctx.lineTo(x + 11 + carWidth/2, y + spostamento + 4);//su
+	ctx.lineTo(x + 14 + carWidth/2, y + spostamento + 6);//inizio
+	ctx.closePath();
+	ctx.fill();
+    ctx.stroke();
+	
+	drawCroceSudista(x + 6, y, carWidth, carHeight, spostamento);
+  }
+}
+
+function drawCroceSudista(x, y, carWidth, carHeight, spostamento) {
+	//bandierone
+	//sfondo
+	ctx.beginPath();
+	ctx.fillStyle= !bw ? COLORS.orangeCart : COLORS.grayTarmacLight;
+	ctx.fillRect(x+11, y+ spostamento + 2, 12, carHeight - 4);
+	ctx.closePath();
+	ctx.fill();
+		
+	//croce sudista
+	ctx.strokeStyle= !bw ? COLORS.blueCart : COLORS.grayTarmacDarkest;
+	ctx.lineWidth=3;
+	ctx.beginPath();
+	ctx.moveTo(x+12, y+spostamento + 4);
+	ctx.lineTo(x+22, y+carHeight+spostamento-4);
+	ctx.moveTo(x+12, y+spostamento + carHeight - 4);
+	ctx.lineTo(x+22, y+spostamento + 4);
+	ctx.closePath();
+	ctx.stroke();
+	ctx.lineWidth=1;
+	
+	//stelle
+	const ss = 0.5;
+	ctx.strokeStyle = COLORS.white;
+	ctx.beginPath();
+	ctx.strokeRect(x + 13, y + spostamento + 5, ss, ss);//sinistra alto
+	ctx.closePath();
+	ctx.stroke();
+	
+	ctx.beginPath();
+	ctx.strokeRect(x + 21, y + spostamento + 5, ss, ss);//destra alto
+	ctx.closePath();
+	ctx.stroke();
+	
+	ctx.beginPath();
+	ctx.strokeRect(x + 17, y + spostamento + 10, ss, ss);//centro
+	ctx.closePath();
+	ctx.stroke();
+	
+	ctx.beginPath();
+	ctx.strokeRect(x + 13, y + spostamento + 15, ss, ss);//sinistra basso
+	ctx.closePath();
+	ctx.stroke();
+	
+	ctx.beginPath();
+	ctx.strokeRect(x + 21, y + spostamento + 15, ss, ss);//destra basso
+	ctx.closePath();
+	ctx.stroke();
+}
+
 //ferrari
 function drawCarApple2Ferrari(c) {
   const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
@@ -2034,6 +2188,7 @@ function drawCar(c) {
   if(carType === "ferrari") return drawCarApple2Ferrari(c);
   if(carType === "tir") return drawCarApple2Tir(c);
   if(carType === "furgo") return drawCarApple2Furgo(c);
+  if(carType === "generalLee") return drawCarApple2GeneralLee(c);
 
   const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
   if (screenY < -tile || screenY > canvas.height + tile) return;
