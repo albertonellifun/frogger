@@ -69,6 +69,9 @@
   <audio id="cricketeerTrafficSound" preload="auto">
 	<source src="./cricketeer-traffic.mp3" type="audio/mpeg">
   </audio>
+  <audio id="generalLeeSound" preload="auto">
+	<source src="./general-lee.mp3" type="audio/mpeg">
+  </audio>
   <script>
   (() => {
     const COLORS = {
@@ -168,9 +171,10 @@
 	  console.log('grass='+countGrass+' road='+countRoad+' double='+countDouble+ ' river='+countRiver);
 	  
 	  let yy = Math.abs(y);
-	  let apple2CarType1 = yy%5 === 0 ? "ferrari" : yy%5 === 3 ? "elegant" : yy%5 === 2 ? "tir" : yy%5 === 1 ? "generalLee" : "furgo";
-	  let apple2CarType2 = yy%5 === 1 ? "ferrari" : yy%5 === 2 ? "elegant" : yy%5 === 3 ? "tir" : yy%5 === 4 ? "generalLee" : "furgo";
-	  
+	  let apple2CarTypeArray = ["ferrari","tir","elegant","furgo","generalLee"];
+	  let apple2CarType1 = apple2CarTypeArray[yy%5];
+	  let apple2CarType2 = apple2CarTypeArray[(yy+1)%5];
+	  let mixMode = false;//MORE VINTAGE: 1 TYPE = 1 ROW
 	  
       //strada doppia
       const makeDoubleRoad = y !== 0 && (countDouble<4 || (countGrass >= countTot / 2 && countDouble < 4));
@@ -193,7 +197,7 @@
               y: y * tile,
               speed: speedA,
               color: randomCarColor(),
-			  type: apple2Mode ? apple2CarType1 : Math.random() < 0.1 ? "police" : "car"
+			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, 4)] : apple2CarType1) : Math.random() < 0.1 ? "police" : "car"
             };
             rowA.cars.push(c);
           }
@@ -207,7 +211,7 @@
               y: (y+1) * tile,
               speed: speedB,
               color: randomCarColor(),
-			  type: apple2Mode ? apple2CarType2 : "car"
+			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, 4)] : apple2CarType2) : "car"
             };
             rowB.cars.push(c2);
           }
@@ -234,7 +238,7 @@
               y: y * tile,
               speed: speedA,
               color: randomCarColor(),
-			  type: apple2Mode ? apple2CarType2 : "car"
+			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, 4)] : apple2CarType2) : "car"
             };
             rowA.cars.push(c);
           }
@@ -248,7 +252,7 @@
               y: (y-1) * tile,
               speed: speedB,
               color: randomCarColor(),
-			  type: apple2Mode ? apple2CarType1 : Math.random() < 0.1 ? "police" : "car"
+			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, 4)] : apple2CarType1) : Math.random() < 0.1 ? "police" : "car"
             };
             rowB.cars.push(c2);
           }
@@ -296,7 +300,7 @@
             y: y*tile,
             speed: speed, 
             color: randomCarColor(),
-			type: apple2Mode ? apple2CarType1 : "car"
+			type: apple2Mode ? (mixMode ? apple2CarTypeArray[(Math.random()*5)|0] : apple2CarType1) : "car"
           });
         }
         segments.set(y,row);
@@ -509,6 +513,21 @@
 	  if (e.keyCode === 65) {
 	    //65=A
 		apple2Mode = !apple2Mode;
+		//xxxxxxxxx
+		const sortedRows = Array.from(segments.keys());
+	    for (let y of sortedRows) {
+	      const row = segments.get(y);
+          //strada
+		  if (row.type === 'road') {
+		    let apple2CarTypeArray = ["ferrari","tir","elegant","furgo","generalLee"];
+			let apple2CarType = apple2CarTypeArray[randomInt(0, 4)];
+            for (let car of row.cars) {
+			  if(!apple2Mode) car.type = "car";
+			  else car.type = apple2CarType;
+			}
+          }
+		}
+
 	  }
 	  
 	  if (e.keyCode === 83) {
@@ -1909,6 +1928,15 @@ function drawCarApple2GeneralLee(c) {
   ctx.fillRect(x, y + spostamento, carWidth, carHeight);
   ctx.strokeRect(x, y + spostamento, carWidth, carHeight);
 
+  let sameRow = Math.round(c.y/tile - offset) === 0;
+  let collision = !sameRow ? false :
+				c.speed > 0 ? (frog.x*tile - c.x) < tile * 3 && (frog.x*tile - c.x) > -1 : 
+				(c.x - frog.x*tile) < tile * 3 && (c.x - frog.x*tile) > -1;
+  let carLightSound = collision && Math.random() < 0.01;
+  if(carLightSound) {
+    playSound('generalLeeSound');
+  }
+
   if(c.speed > 0) {
     //cofano con UU
 	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
@@ -2544,7 +2572,7 @@ function shadeColor(color, percent) {
 
 
 
-//apple2 forever
+  //apple2 forever
   function drawCricketeer(){
     const cx = frog.x * tile + tile / 2;
 	const cy = canvas.height / 2 + tile / 2;
