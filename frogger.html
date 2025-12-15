@@ -171,10 +171,10 @@
 	  console.log('grass='+countGrass+' road='+countRoad+' double='+countDouble+ ' river='+countRiver);
 	  
 	  let yy = Math.abs(y);
-	  let apple2CarTypeArray = ["ferrari","tir","elegant","furgo","generalLee"];
-	  let apple2CarType1 = apple2CarTypeArray[yy%5];
-	  let apple2CarType2 = apple2CarTypeArray[(yy+1)%5];
-	  let mixMode = false;//MORE VINTAGE: 1 TYPE = 1 ROW
+	  let apple2CarTypeArray = ["ferrari","tir","elegant","furgo","generalLee","rosco"];
+	  let apple2CarType1 = apple2CarTypeArray[yy%apple2CarTypeArray.length];
+	  let apple2CarType2 = apple2CarTypeArray[(yy+1)%apple2CarTypeArray.length];
+	  let mixMode = true;//false;//MORE VINTAGE: 1 TYPE = 1 ROW
 	  
       //strada doppia
       const makeDoubleRoad = y !== 0 && (countDouble<4 || (countGrass >= countTot / 2 && countDouble < 4));
@@ -197,7 +197,7 @@
               y: y * tile,
               speed: speedA,
               color: randomCarColor(),
-			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, 4)] : apple2CarType1) : Math.random() < 0.1 ? "police" : "car"
+			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, apple2CarTypeArray.length-1)] : apple2CarType1) : Math.random() < 0.1 ? "police" : "car"
             };
             rowA.cars.push(c);
           }
@@ -211,7 +211,7 @@
               y: (y+1) * tile,
               speed: speedB,
               color: randomCarColor(),
-			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, 4)] : apple2CarType2) : "car"
+			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, apple2CarTypeArray.length-1)] : apple2CarType2) : "car"
             };
             rowB.cars.push(c2);
           }
@@ -238,7 +238,7 @@
               y: y * tile,
               speed: speedA,
               color: randomCarColor(),
-			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, 4)] : apple2CarType2) : "car"
+			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, apple2CarTypeArray.length-1)] : apple2CarType2) : "car"
             };
             rowA.cars.push(c);
           }
@@ -252,7 +252,7 @@
               y: (y-1) * tile,
               speed: speedB,
               color: randomCarColor(),
-			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, 4)] : apple2CarType1) : Math.random() < 0.1 ? "police" : "car"
+			  type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, apple2CarTypeArray.length-1)] : apple2CarType1) : Math.random() < 0.1 ? "police" : "car"
             };
             rowB.cars.push(c2);
           }
@@ -300,7 +300,7 @@
             y: y*tile,
             speed: speed, 
             color: randomCarColor(),
-			type: apple2Mode ? (mixMode ? apple2CarTypeArray[(Math.random()*5)|0] : apple2CarType1) : "car"
+			type: apple2Mode ? (mixMode ? apple2CarTypeArray[randomInt(0, apple2CarTypeArray.length-1)] : apple2CarType1) : "car"
           });
         }
         segments.set(y,row);
@@ -519,8 +519,8 @@
 	      const row = segments.get(y);
           //strada
 		  if (row.type === 'road') {
-		    let apple2CarTypeArray = ["ferrari","tir","elegant","furgo","generalLee"];
-			let apple2CarType = apple2CarTypeArray[randomInt(0, 4)];
+		    let apple2CarTypeArray = ["ferrari","tir","elegant","furgo","generalLee","rosco"];
+			let apple2CarType = apple2CarTypeArray[randomInt(0, apple2CarTypeArray.length-1)];
             for (let car of row.cars) {
 			  if(!apple2Mode) car.type = "car";
 			  else car.type = apple2CarType;
@@ -1919,7 +1919,7 @@ function drawCarApple2GeneralLee(c) {
 
 
   const carWidth = 40;
-  const carHeight = 20;
+  const carHeight = 22;
   const spostamento = 6;
 
   // Corpo rettangolare bianco
@@ -1940,6 +1940,7 @@ function drawCarApple2GeneralLee(c) {
   if(c.speed > 0) {
     //cofano con UU
 	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+	ctx.beginPath();
     ctx.moveTo(x + carWidth - 7, y + carHeight / 2 + spostamento - 3);
 	ctx.lineTo(x + carWidth - 3, y + carHeight / 2 + spostamento - 3);
 	ctx.lineTo(x + carWidth - 3, y + carHeight / 2 + spostamento - 6);
@@ -1979,6 +1980,7 @@ function drawCarApple2GeneralLee(c) {
   } else {
     //cofano con UU
 	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+	ctx.beginPath();
     ctx.moveTo(x + 7, y + carHeight / 2 + spostamento - 3);
 	ctx.lineTo(x + 3, y + carHeight / 2 + spostamento - 3);
 	ctx.lineTo(x + 3, y + carHeight / 2 + spostamento - 6);
@@ -2021,7 +2023,7 @@ function drawCroceSudista(x, y, carWidth, carHeight, spostamento) {
 	//bandierone
 	//sfondo
 	ctx.beginPath();
-	ctx.fillStyle= !bw ? COLORS.orangeCart : COLORS.grayTarmacLight;
+	ctx.fillStyle= !bw ? COLORS.orangeCart : COLORS.gray;
 	ctx.fillRect(x+11, y+ spostamento + 2, 12, carHeight - 4);
 	ctx.closePath();
 	ctx.fill();
@@ -2066,6 +2068,142 @@ function drawCroceSudista(x, y, carWidth, carHeight, spostamento) {
 	ctx.closePath();
 	ctx.stroke();
 }
+
+//rosco p. coltrane
+function drawCarApple2Rosco(c) {
+  const screenY = canvas.height / 2 - (c.y / tile - offset) * tile;
+  if (screenY < -tile || screenY > canvas.height + tile) return;
+
+  const w = tile * 0.9;
+  const h = tile * 0.6;
+  const x = c.x + (tile - w) / 2;
+  const y = screenY + (tile - h) / 2 - 5;
+
+  //ctx.fillStyle=COLORS.redCart;
+  //ctx.fillRect(x,y,tile,tile);
+
+
+  const carWidth = 40;
+  const carHeight = 22;
+  const spostamento = 6;
+
+  // Corpo rettangolare bianco
+  ctx.fillStyle = COLORS.white;
+  ctx.strokeStyle = COLORS.black;
+  ctx.fillRect(x, y + spostamento, carWidth, carHeight);
+  ctx.strokeRect(x, y + spostamento, carWidth, carHeight);
+
+  let sameRow = Math.round(c.y/tile - offset) === 0;
+  let collision = !sameRow ? false :
+				c.speed > 0 ? (frog.x*tile - c.x) < tile * 3 && (frog.x*tile - c.x) > -1 : 
+				(c.x - frog.x*tile) < tile * 3 && (c.x - frog.x*tile) > -1;
+  let carLightSound = collision && Math.random() < 0.01;
+  if(carLightSound) {
+    playSound('policeSound');
+  }
+
+  if(c.speed > 0) {
+    //cofano con UU
+	ctx.strokeStyle = COLORS.gray;//bordo
+	ctx.beginPath();
+    ctx.moveTo(x + carWidth - 1, y + carHeight / 2 + spostamento - 5);
+	ctx.lineTo(x + carWidth - 10, y + carHeight / 2 + spostamento - 6);
+	ctx.moveTo(x + carWidth - 1, y + carHeight / 2 + spostamento + 5);
+	ctx.lineTo(x + carWidth - 10, y + carHeight / 2 + spostamento + 6);
+	ctx.moveTo(x + carWidth - 1, y + carHeight / 2 + spostamento);
+	ctx.lineTo(x + carWidth - 12, y + carHeight / 2 + spostamento);
+	ctx.moveTo(x + 1, y + carHeight / 2 + spostamento);
+	ctx.lineTo(x + 6, y + carHeight / 2 + spostamento);
+	ctx.stroke();
+	
+	//parabrezza
+	ctx.fillStyle = COLORS.black;
+	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+    ctx.beginPath();
+    ctx.moveTo(x + carWidth/2 + 3, y + spostamento + 4);
+	ctx.lineTo(x + carWidth/2 + 3, y + carHeight + spostamento - 4);//giu
+	ctx.lineTo(x + carWidth/2 + 6, y + carHeight + spostamento - 2);//avanti
+	ctx.lineTo(x + carWidth/2 + 6, y + spostamento + 2);//su
+	ctx.lineTo(x + carWidth/2 + 3, y + spostamento + 4);//inizio
+	ctx.closePath();
+	ctx.fill();
+    ctx.stroke();
+	
+	//lunotto
+	ctx.fillStyle = COLORS.black;
+	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+	ctx.beginPath();
+    ctx.moveTo(x + 7, y + spostamento + 5);
+	ctx.lineTo(x + 7, y + carHeight + spostamento - 5);//giu
+	ctx.lineTo(x + 10, y + carHeight + spostamento - 4);//avanti
+	ctx.lineTo(x + 10, y + spostamento + 4);//su
+	ctx.lineTo(x + 7, y + spostamento + 5);//inizio
+	ctx.closePath();
+	ctx.fill();
+    ctx.stroke();
+	
+	
+	drawSirena(x, y, carWidth, carHeight, spostamento);
+  } else {
+    //cofano con UU
+	ctx.strokeStyle = COLORS.gray;//bordo
+	ctx.beginPath();
+    ctx.moveTo(x + 10, y + carHeight / 2 + spostamento - 6);
+	ctx.lineTo(x + 1, y + carHeight / 2 + spostamento - 5);
+	ctx.moveTo(x + 10, y + carHeight / 2 + spostamento + 6);
+	ctx.lineTo(x + 1, y + carHeight / 2 + spostamento + 5);
+	ctx.moveTo(x + 1, y + carHeight / 2 + spostamento);
+	ctx.lineTo(x + 12, y + carHeight / 2 + spostamento);
+	ctx.moveTo(x - 1 + carWidth, y + carHeight / 2 + spostamento);
+	ctx.lineTo(x - 6 + carWidth, y + carHeight / 2 + spostamento);
+	ctx.stroke();
+	
+	//parabrezza
+	ctx.fillStyle = COLORS.black;
+	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+    ctx.beginPath();
+    ctx.moveTo(x + 14, y + spostamento + 2);
+	ctx.lineTo(x + 14, y + carHeight + spostamento - 2);//giu
+	ctx.lineTo(x + 17, y + carHeight + spostamento - 4);//avanti
+	ctx.lineTo(x + 17, y + spostamento + 4);//su
+	ctx.lineTo(x + 14, y + spostamento + 2);//inizio
+	ctx.closePath();
+	ctx.fill();
+    ctx.stroke();
+	
+	//lunotto
+	ctx.fillStyle = COLORS.black;
+	ctx.strokeStyle = COLORS.grayTarmacDark;//bordo
+	ctx.beginPath();
+    ctx.moveTo(x + 13 + carWidth/2, y + spostamento + 5);
+	ctx.lineTo(x + 13 + carWidth/2, y + carHeight + spostamento - 5);//giu
+	ctx.lineTo(x + 10 + carWidth/2, y + carHeight + spostamento - 4);//avanti
+	ctx.lineTo(x + 10 + carWidth/2, y + spostamento + 4);//su
+	ctx.lineTo(x + 13 + carWidth/2, y + spostamento + 5);//inizio
+	ctx.closePath();
+	ctx.fill();
+    ctx.stroke();
+	
+	drawSirena(x + 6, y, carWidth, carHeight, spostamento);
+  }
+}
+
+function drawSirena(x, y, carWidth, carHeight, spostamento) {
+    
+	ctx.strokeStyle = COLORS.gray;
+	ctx.strokeRect(x + 15, y + spostamento + 2, 4, carHeight - 4);
+	
+	ctx.fillStyle = COLORS.blueCart;
+	ctx.fillRect(x + 15, y + spostamento + 3, 4, carHeight/3);
+	
+	ctx.fillStyle = COLORS.redCart;
+	ctx.fillRect(x + 15, y + spostamento + 2  + carHeight - 4, 4, -carHeight/3);
+	
+	const seconds = new Date().getSeconds();
+	if (seconds % 2 === 0) drawGlow(x + 17, y + spostamento + 5, 12, COLORS.policeBlueLightOff, COLORS.policeBlueLightOn, 1,1,1,1); 
+	else drawGlow(x + 17, y + spostamento + 2  + carHeight - 6, 12, COLORS.policeRedLightOff, COLORS.policeRedLightOn, 1,1,1,1); 
+}
+
 
 //ferrari
 function drawCarApple2Ferrari(c) {
@@ -2217,6 +2355,7 @@ function drawCar(c) {
   if(carType === "tir") return drawCarApple2Tir(c);
   if(carType === "furgo") return drawCarApple2Furgo(c);
   if(carType === "generalLee") return drawCarApple2GeneralLee(c);
+  if(carType === "rosco") return drawCarApple2Rosco(c);
 
   const screenY = canvas.height/2 - (c.y/tile - offset)*tile;
   if (screenY < -tile || screenY > canvas.height + tile) return;
@@ -2369,10 +2508,15 @@ function drawGlow(x, y, radius, colorFrom, colorTo, q0, q1, q2, q3) {
   
   ctx.fillStyle = gradient;
   ctx.beginPath(); 
-  if(q0) ctx.arc(x, y, radius, Math.PI * 0, Math.PI * 0.5);
-  if(q1) ctx.arc(x, y, radius, Math.PI * 0.5, Math.PI);
-  if(q2) ctx.arc(x, y, radius, Math.PI, Math.PI * 1.5);
-  if(q3) ctx.arc(x, y, radius, Math.PI * 1.5, Math.PI * 2);
+  if (q0 && q1 && q2 && q3) {
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+  }
+  else {
+    if(q0) ctx.arc(x, y, radius, Math.PI * 0, Math.PI * 0.5);
+    if(q1) ctx.arc(x, y, radius, Math.PI * 0.5, Math.PI);
+    if(q2) ctx.arc(x, y, radius, Math.PI, Math.PI * 1.5);
+    if(q3) ctx.arc(x, y, radius, Math.PI * 1.5, Math.PI * 2);
+  }
   ctx.fill();  
 }
 
